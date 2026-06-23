@@ -1,0 +1,64 @@
+YEAR,REGION,ROUND,TEAM_HIGH,SEED_HIGH,TEAM_LOW,SEED_LOW,PRED_WINNER,PRED_SEED,PROB_HIGH_WINS,IMPLIED_LINE,BEST_WINDOW,MODEL
+2026,East,R64,Arizona,1,LIU Brooklyn,16,Arizona,1,0.882263485424644,-749,all_prior,RandomForest
+2026,East,R64,Villanova,8,Utah St.,9,Villanova,8,0.6042799562947906,-153,all_prior,RandomForest
+2026,East,R64,Wisconsin,5,High Point,12,Wisconsin,5,0.8218328430106072,-461,all_prior,RandomForest
+2026,East,R64,Arkansas,4,Hawaii,13,Arkansas,4,0.8605551746604239,-617,all_prior,RandomForest
+2026,East,R64,BYU,6,North Carolina St.,11,BYU,6,0.6266622517150577,-168,all_prior,RandomForest
+2026,East,R64,Gonzaga,3,Kennesaw St.,14,Gonzaga,3,0.8127198689539461,-434,all_prior,RandomForest
+2026,East,R64,Miami FL,7,Missouri,10,Miami FL,7,0.7830724709999156,-361,all_prior,RandomForest
+2026,East,R64,Purdue,2,Queens,15,Purdue,2,0.9507345968044659,-1930,all_prior,RandomForest
+2026,Midwest,R64,Duke,1,Siena,16,Duke,1,0.9447233699453471,-1709,all_prior,RandomForest
+2026,Midwest,R64,Ohio St.,8,TCU,9,Ohio St.,8,0.5857771254099011,-141,all_prior,RandomForest
+2026,Midwest,R64,St. John's,5,Northern Iowa,12,St. John's,5,0.8257288952580393,-474,all_prior,RandomForest
+2026,Midwest,R64,Kansas,4,Cal Baptist,13,Kansas,4,0.9103391952276509,-1015,all_prior,RandomForest
+2026,Midwest,R64,Louisville,6,South Florida,11,Louisville,6,0.6591356236972465,-193,all_prior,RandomForest
+2026,Midwest,R64,Michigan St.,3,North Dakota St.,14,Michigan St.,3,0.9315045816250308,-1360,all_prior,RandomForest
+2026,Midwest,R64,UCLA,7,UCF,10,UCLA,7,0.6737615861209935,-207,all_prior,RandomForest
+2026,Midwest,R64,Connecticut,2,Furman,15,Connecticut,2,0.9739859233018451,-3744,all_prior,RandomForest
+2026,South,R64,Michigan,1,Howard,16,Michigan,1,0.8909506010492234,-817,all_prior,RandomForest
+2026,South,R64,Georgia,8,Saint Louis,9,Georgia,8,0.6247902031059116,-167,all_prior,RandomForest
+2026,South,R64,Texas Tech,5,Akron,12,Texas Tech,5,0.7371641690452547,-280,all_prior,RandomForest
+2026,South,R64,Alabama,4,Hofstra,13,Alabama,4,0.777643137151222,-350,all_prior,RandomForest
+2026,South,R64,Tennessee,6,Miami OH,11,Tennessee,6,0.7080125320434558,-242,all_prior,RandomForest
+2026,South,R64,Virginia,3,Wright St.,14,Virginia,3,0.96924280352248,-3151,all_prior,RandomForest
+2026,South,R64,Kentucky,7,Santa Clara,10,Kentucky,7,0.5842927169973435,-141,all_prior,RandomForest
+2026,South,R64,Iowa St.,2,Tennessee St.,15,Iowa St.,2,0.9598771799366882,-2392,all_prior,RandomForest
+2026,West,R64,Florida,1,Lehigh,16,Florida,1,0.9468305795484429,-1781,all_prior,RandomForest
+2026,West,R64,Clemson,8,Iowa,9,Iowa,9,0.38223787915446045,-162,all_prior,RandomForest
+2026,West,R64,Vanderbilt,5,McNeese St.,12,Vanderbilt,5,0.802721988914699,-407,all_prior,RandomForest
+2026,West,R64,Nebraska,4,Troy,13,Nebraska,4,0.8977479057835237,-878,all_prior,RandomForest
+2026,West,R64,North Carolina,6,VCU,11,North Carolina,6,0.6755481222554923,-208,all_prior,RandomForest
+2026,West,R64,Illinois,3,Penn,14,Illinois,3,0.889074261227217,-802,all_prior,RandomForest
+2026,West,R64,Saint Mary's,7,Texas A&M,10,Saint Mary's,7,0.655749961851923,-190,all_prior,RandomForest
+2026,West,R64,Houston,2,Idaho,15,Houston,2,0.924916978001018,-1232,all_prior,RandomForest
+2026,East,R32,Arizona,1,Villanova,8,Arizona,1,0.8564837234929299,-597,all_prior,RandomForest
+2026,East,R32,Arkansas,4,Wisconsin,5,Arkansas,4,0.5888347567868811,-143,all_prior,RandomForest
+2026,East,R32,Gonzaga,3,BYU,6,Gonzaga,3,0.6861601668033882,-219,all_prior,RandomForest
+2026,East,R32,Purdue,2,Miami FL,7,Purdue,2,0.8201361260061453,-456,all_prior,RandomForest
+2026,Midwest,R32,Duke,1,Ohio St.,8,Duke,1,0.8836810025011345,-760,all_prior,RandomForest
+2026,Midwest,R32,Kansas,4,St. John's,5,Kansas,4,0.5740695405341267,-135,all_prior,RandomForest
+2026,Midwest,R32,Michigan St.,3,Louisville,6,Michigan St.,3,0.7025002762136632,-236,all_prior,RandomForest
+2026,Midwest,R32,Connecticut,2,UCLA,7,Connecticut,2,0.7976764196113205,-394,all_prior,RandomForest
+2026,South,R32,Michigan,1,Georgia,8,Michigan,1,0.8723071021364234,-683,all_prior,RandomForest
+2026,South,R32,Alabama,4,Texas Tech,5,Texas Tech,5,0.34559341531194865,-189,all_prior,RandomForest
+2026,South,R32,Virginia,3,Tennessee,6,Virginia,3,0.6598332728714377,-194,all_prior,RandomForest
+2026,South,R32,Iowa St.,2,Kentucky,7,Iowa St.,2,0.730076117485356,-270,all_prior,RandomForest
+2026,West,R32,Florida,1,Iowa,9,Florida,1,0.8165211609950908,-445,all_prior,RandomForest
+2026,West,R32,Nebraska,4,Vanderbilt,5,Vanderbilt,5,0.4264200076992332,-135,all_prior,RandomForest
+2026,West,R32,Illinois,3,North Carolina,6,Illinois,3,0.7690187074601594,-333,all_prior,RandomForest
+2026,West,R32,Houston,2,Saint Mary's,7,Houston,2,0.7769320103239735,-348,all_prior,RandomForest
+2026,East,S16,Arizona,1,Arkansas,4,Arizona,1,0.8953145769940233,-855,all_prior,RandomForest
+2026,East,S16,Purdue,2,Gonzaga,3,Purdue,2,0.6897899417556129,-222,all_prior,RandomForest
+2026,Midwest,S16,Duke,1,Kansas,4,Duke,1,0.8195979715068598,-454,all_prior,RandomForest
+2026,Midwest,S16,Connecticut,2,Michigan St.,3,Connecticut,2,0.6033808402908507,-152,all_prior,RandomForest
+2026,South,S16,Michigan,1,Texas Tech,5,Michigan,1,0.8159121089549128,-443,all_prior,RandomForest
+2026,South,S16,Iowa St.,2,Virginia,3,Iowa St.,2,0.6494065523673227,-185,all_prior,RandomForest
+2026,West,S16,Florida,1,Vanderbilt,5,Florida,1,0.5148905178606725,-106,all_prior,RandomForest
+2026,West,S16,Houston,2,Illinois,3,Houston,2,0.5382437337795388,-117,all_prior,RandomForest
+2026,East,E8,Arizona,1,Purdue,2,Arizona,1,0.6097265683770163,-156,all_prior,RandomForest
+2026,Midwest,E8,Duke,1,Connecticut,2,Duke,1,0.6664033995271946,-200,all_prior,RandomForest
+2026,South,E8,Michigan,1,Iowa St.,2,Michigan,1,0.6422500108009853,-180,all_prior,RandomForest
+2026,West,E8,Florida,1,Houston,2,Houston,2,0.4168301301705337,-140,all_prior,RandomForest
+2026,East / Midwest,F4,Arizona,1,Duke,1,Duke,1,0.40777522740243105,-145,all_prior,RandomForest
+2026,South / West,F4,Michigan,1,Houston,2,Michigan,1,0.5160549461365656,-107,all_prior,RandomForest
+2026,Championship,Championship,Michigan,1,Duke,1,Duke,1,0.3806661231809755,-163,all_prior,RandomForest

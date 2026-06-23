@@ -1,0 +1,481 @@
+window,test_year,train_years,model,cv_score,round,cascade_correct,cascade_total,cascade_accuracy,indep_correct,indep_total,indep_accuracy
+all_prior,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R64,22,32,0.6875,22,32,0.6875
+all_prior,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R32,6,7,0.8571428571428571,14,16,0.875
+all_prior,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,S16,2,5,0.4,4,8,0.5
+all_prior,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,E8,0,0,,1,4,0.25
+all_prior,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,F4,0,0,,2,2,1.0
+all_prior,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,Championship,0,0,,1,1,1.0
+all_prior,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,R64,22,32,0.6875,22,32,0.6875
+all_prior,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,R32,5,7,0.7142857142857143,11,16,0.6875
+all_prior,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,S16,2,2,1.0,6,8,0.75
+all_prior,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,E8,1,1,1.0,3,4,0.75
+all_prior,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,F4,0,0,,1,1,1.0
+all_prior,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,Championship,0,0,,0,0,
+all_prior,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,R64,25,32,0.78125,25,32,0.78125
+all_prior,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,R32,7,9,0.7777777777777778,11,16,0.6875
+all_prior,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,S16,0,3,0.0,2,8,0.25
+all_prior,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,E8,0,0,,1,4,0.25
+all_prior,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,F4,0,0,,1,1,1.0
+all_prior,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,Championship,0,0,,0,0,
+all_prior,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,R64,21,32,0.65625,21,32,0.65625
+all_prior,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,R32,4,7,0.5714285714285714,13,16,0.8125
+all_prior,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,S16,2,2,1.0,6,8,0.75
+all_prior,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,E8,1,2,0.5,2,4,0.5
+all_prior,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,F4,1,1,1.0,2,2,1.0
+all_prior,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,Championship,0,0,,1,1,1.0
+all_prior,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,R64,22,32,0.6875,22,32,0.6875
+all_prior,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,R32,7,7,1.0,12,16,0.75
+all_prior,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,S16,1,5,0.2,4,8,0.5
+all_prior,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,E8,0,0,,2,4,0.5
+all_prior,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,F4,0,0,,1,1,1.0
+all_prior,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,Championship,0,0,,0,0,
+all_prior,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,R64,25,32,0.78125,25,32,0.78125
+all_prior,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,R32,6,9,0.6666666666666666,11,16,0.6875
+all_prior,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,S16,2,3,0.6666666666666666,5,8,0.625
+all_prior,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,E8,0,1,0.0,1,4,0.25
+all_prior,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,F4,0,0,,0,1,0.0
+all_prior,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,Championship,0,0,,0,0,
+all_prior,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,R64,27,32,0.84375,27,32,0.84375
+all_prior,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,R32,9,12,0.75,13,16,0.8125
+all_prior,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,S16,3,3,1.0,7,8,0.875
+all_prior,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,E8,2,2,1.0,3,4,0.75
+all_prior,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,F4,1,1,1.0,1,1,1.0
+all_prior,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,Championship,0,0,,0,0,
+all_prior,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,R64,21,32,0.65625,21,32,0.65625
+all_prior,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,R32,5,6,0.8333333333333334,14,16,0.875
+all_prior,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,S16,3,3,1.0,7,8,0.875
+all_prior,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,E8,1,2,0.5,2,4,0.5
+all_prior,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,F4,0,0,,0,1,0.0
+all_prior,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,Championship,0,0,,0,0,
+all_prior,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,R64,29,32,0.90625,29,32,0.90625
+all_prior,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,R32,8,13,0.6153846153846154,11,16,0.6875
+all_prior,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,S16,4,4,1.0,5,8,0.625
+all_prior,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,E8,1,1,1.0,2,4,0.5
+all_prior,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,F4,1,1,1.0,1,1,1.0
+all_prior,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,Championship,0,0,,0,0,
+all_prior,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,R64,23,32,0.71875,23,32,0.71875
+all_prior,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,R32,5,8,0.625,10,16,0.625
+all_prior,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,S16,1,2,0.5,4,8,0.5
+all_prior,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,E8,1,1,1.0,3,4,0.75
+all_prior,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,F4,0,0,,1,2,0.5
+all_prior,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,Championship,0,0,,1,1,1.0
+all_prior,2019,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7304793028322439,R64,21,32,0.65625,21,32,0.65625
+all_prior,2019,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7304793028322439,R32,6,6,1.0,16,16,1.0
+all_prior,2019,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7304793028322439,S16,3,6,0.5,5,8,0.625
+all_prior,2019,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7304793028322439,E8,0,1,0.0,1,4,0.25
+all_prior,2019,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7304793028322439,F4,0,0,,2,2,1.0
+all_prior,2019,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7304793028322439,Championship,0,0,,1,1,1.0
+all_prior,2021,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7223743878106295,R64,22,32,0.6875,22,32,0.6875
+all_prior,2021,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7223743878106295,R32,5,8,0.625,10,16,0.625
+all_prior,2021,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7223743878106295,S16,0,0,,6,8,0.75
+all_prior,2021,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7223743878106295,E8,0,0,,3,4,0.75
+all_prior,2021,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7223743878106295,F4,1,1,1.0,1,1,1.0
+all_prior,2021,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7223743878106295,Championship,0,0,,0,0,
+all_prior,2022,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.732274844720497,R64,22,32,0.6875,22,32,0.6875
+all_prior,2022,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.732274844720497,R32,5,7,0.7142857142857143,11,16,0.6875
+all_prior,2022,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.732274844720497,S16,2,2,1.0,5,8,0.625
+all_prior,2022,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.732274844720497,E8,0,1,0.0,2,4,0.5
+all_prior,2022,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.732274844720497,F4,0,0,,1,1,1.0
+all_prior,2022,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.732274844720497,Championship,0,0,,0,0,
+all_prior,2023,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.730326656808711,R64,23,32,0.71875,23,32,0.71875
+all_prior,2023,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.730326656808711,R32,5,9,0.5555555555555556,11,16,0.6875
+all_prior,2023,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.730326656808711,S16,1,3,0.3333333333333333,4,8,0.5
+all_prior,2023,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.730326656808711,E8,0,0,,1,4,0.25
+all_prior,2023,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.730326656808711,F4,0,0,,2,2,1.0
+all_prior,2023,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.730326656808711,Championship,0,0,,0,1,0.0
+all_prior,2024,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7206160999709386,R64,22,32,0.6875,22,32,0.6875
+all_prior,2024,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7206160999709386,R32,7,7,1.0,15,16,0.9375
+all_prior,2024,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7206160999709386,S16,2,4,0.5,3,8,0.375
+all_prior,2024,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7206160999709386,E8,1,1,1.0,3,4,0.75
+all_prior,2024,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7206160999709386,F4,0,0,,2,2,1.0
+all_prior,2024,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7206160999709386,Championship,0,0,,0,1,0.0
+all_prior,2025,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7181818181818183,R64,26,32,0.8125,26,32,0.8125
+all_prior,2025,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7181818181818183,R32,7,10,0.7,12,16,0.75
+all_prior,2025,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7181818181818183,S16,4,4,1.0,8,8,1.0
+all_prior,2025,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7181818181818183,E8,4,4,1.0,4,4,1.0
+all_prior,2025,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7181818181818183,F4,0,1,0.0,0,1,0.0
+all_prior,2025,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7181818181818183,Championship,0,0,,0,0,
+last_1_year,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R64,22,32,0.6875,22,32,0.6875
+last_1_year,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R32,6,7,0.8571428571428571,14,16,0.875
+last_1_year,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,S16,2,5,0.4,4,8,0.5
+last_1_year,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,E8,0,0,,1,4,0.25
+last_1_year,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,F4,0,0,,2,2,1.0
+last_1_year,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,Championship,0,0,,1,1,1.0
+last_1_year,2010,[np.int64(2009)],RandomForest,0.7641025641025643,R64,25,32,0.78125,25,32,0.78125
+last_1_year,2010,[np.int64(2009)],RandomForest,0.7641025641025643,R32,4,9,0.4444444444444444,10,16,0.625
+last_1_year,2010,[np.int64(2009)],RandomForest,0.7641025641025643,S16,1,1,1.0,6,8,0.75
+last_1_year,2010,[np.int64(2009)],RandomForest,0.7641025641025643,E8,0,1,0.0,2,4,0.5
+last_1_year,2010,[np.int64(2009)],RandomForest,0.7641025641025643,F4,0,0,,1,1,1.0
+last_1_year,2010,[np.int64(2009)],RandomForest,0.7641025641025643,Championship,0,0,,0,0,
+last_1_year,2011,[np.int64(2010)],BaggingClassifier,0.7205128205128205,R64,23,32,0.71875,23,32,0.71875
+last_1_year,2011,[np.int64(2010)],BaggingClassifier,0.7205128205128205,R32,5,8,0.625,12,16,0.75
+last_1_year,2011,[np.int64(2010)],BaggingClassifier,0.7205128205128205,S16,1,4,0.25,3,8,0.375
+last_1_year,2011,[np.int64(2010)],BaggingClassifier,0.7205128205128205,E8,0,0,,0,4,0.0
+last_1_year,2011,[np.int64(2010)],BaggingClassifier,0.7205128205128205,F4,0,0,,1,1,1.0
+last_1_year,2011,[np.int64(2010)],BaggingClassifier,0.7205128205128205,Championship,0,0,,0,0,
+last_1_year,2012,[np.int64(2011)],RandomForest,0.6897435897435897,R64,17,32,0.53125,17,32,0.53125
+last_1_year,2012,[np.int64(2011)],RandomForest,0.6897435897435897,R32,3,4,0.75,11,16,0.6875
+last_1_year,2012,[np.int64(2011)],RandomForest,0.6897435897435897,S16,1,1,1.0,7,8,0.875
+last_1_year,2012,[np.int64(2011)],RandomForest,0.6897435897435897,E8,0,0,,1,4,0.25
+last_1_year,2012,[np.int64(2011)],RandomForest,0.6897435897435897,F4,1,1,1.0,2,2,1.0
+last_1_year,2012,[np.int64(2011)],RandomForest,0.6897435897435897,Championship,0,0,,1,1,1.0
+last_1_year,2013,[np.int64(2012)],RandomForest,0.6666666666666667,R64,23,32,0.71875,23,32,0.71875
+last_1_year,2013,[np.int64(2012)],RandomForest,0.6666666666666667,R32,7,7,1.0,13,16,0.8125
+last_1_year,2013,[np.int64(2012)],RandomForest,0.6666666666666667,S16,1,5,0.2,4,8,0.5
+last_1_year,2013,[np.int64(2012)],RandomForest,0.6666666666666667,E8,0,0,,2,4,0.5
+last_1_year,2013,[np.int64(2012)],RandomForest,0.6666666666666667,F4,0,0,,1,1,1.0
+last_1_year,2013,[np.int64(2012)],RandomForest,0.6666666666666667,Championship,0,0,,0,0,
+last_1_year,2014,[np.int64(2013)],BaggingClassifier,0.6705128205128206,R64,21,32,0.65625,21,32,0.65625
+last_1_year,2014,[np.int64(2013)],BaggingClassifier,0.6705128205128206,R32,8,8,1.0,13,16,0.8125
+last_1_year,2014,[np.int64(2013)],BaggingClassifier,0.6705128205128206,S16,2,3,0.6666666666666666,6,8,0.75
+last_1_year,2014,[np.int64(2013)],BaggingClassifier,0.6705128205128206,E8,0,1,0.0,2,4,0.5
+last_1_year,2014,[np.int64(2013)],BaggingClassifier,0.6705128205128206,F4,0,0,,0,1,0.0
+last_1_year,2014,[np.int64(2013)],BaggingClassifier,0.6705128205128206,Championship,0,0,,0,0,
+last_1_year,2015,[np.int64(2014)],RandomForest,0.6717948717948719,R64,25,32,0.78125,25,32,0.78125
+last_1_year,2015,[np.int64(2014)],RandomForest,0.6717948717948719,R32,6,10,0.6,12,16,0.75
+last_1_year,2015,[np.int64(2014)],RandomForest,0.6717948717948719,S16,2,2,1.0,7,8,0.875
+last_1_year,2015,[np.int64(2014)],RandomForest,0.6717948717948719,E8,3,3,1.0,4,4,1.0
+last_1_year,2015,[np.int64(2014)],RandomForest,0.6717948717948719,F4,0,1,0.0,0,1,0.0
+last_1_year,2015,[np.int64(2014)],RandomForest,0.6717948717948719,Championship,0,0,,0,0,
+last_1_year,2016,[np.int64(2015)],RandomForest,0.8025641025641026,R64,23,32,0.71875,23,32,0.71875
+last_1_year,2016,[np.int64(2015)],RandomForest,0.8025641025641026,R32,5,8,0.625,13,16,0.8125
+last_1_year,2016,[np.int64(2015)],RandomForest,0.8025641025641026,S16,4,4,1.0,7,8,0.875
+last_1_year,2016,[np.int64(2015)],RandomForest,0.8025641025641026,E8,0,2,0.0,1,4,0.25
+last_1_year,2016,[np.int64(2015)],RandomForest,0.8025641025641026,F4,0,0,,0,1,0.0
+last_1_year,2016,[np.int64(2015)],RandomForest,0.8025641025641026,Championship,0,0,,0,0,
+last_1_year,2017,[np.int64(2016)],RandomForest,0.6871794871794872,R64,27,32,0.84375,27,32,0.84375
+last_1_year,2017,[np.int64(2016)],RandomForest,0.6871794871794872,R32,6,11,0.5454545454545454,9,16,0.5625
+last_1_year,2017,[np.int64(2016)],RandomForest,0.6871794871794872,S16,1,2,0.5,5,8,0.625
+last_1_year,2017,[np.int64(2016)],RandomForest,0.6871794871794872,E8,0,0,,2,4,0.5
+last_1_year,2017,[np.int64(2016)],RandomForest,0.6871794871794872,F4,0,1,0.0,0,1,0.0
+last_1_year,2017,[np.int64(2016)],RandomForest,0.6871794871794872,Championship,0,0,,0,0,
+last_1_year,2018,[np.int64(2017)],RandomForest,0.7397435897435898,R64,25,32,0.78125,25,32,0.78125
+last_1_year,2018,[np.int64(2017)],RandomForest,0.7397435897435898,R32,6,9,0.6666666666666666,10,16,0.625
+last_1_year,2018,[np.int64(2017)],RandomForest,0.7397435897435898,S16,1,1,1.0,4,8,0.5
+last_1_year,2018,[np.int64(2017)],RandomForest,0.7397435897435898,E8,1,2,0.5,2,4,0.5
+last_1_year,2018,[np.int64(2017)],RandomForest,0.7397435897435898,F4,0,0,,1,2,0.5
+last_1_year,2018,[np.int64(2017)],RandomForest,0.7397435897435898,Championship,0,0,,1,1,1.0
+last_1_year,2019,[np.int64(2018)],RandomForest,0.6807692307692308,R64,23,32,0.71875,23,32,0.71875
+last_1_year,2019,[np.int64(2018)],RandomForest,0.6807692307692308,R32,6,8,0.75,14,16,0.875
+last_1_year,2019,[np.int64(2018)],RandomForest,0.6807692307692308,S16,3,5,0.6,6,8,0.75
+last_1_year,2019,[np.int64(2018)],RandomForest,0.6807692307692308,E8,0,1,0.0,2,4,0.5
+last_1_year,2019,[np.int64(2018)],RandomForest,0.6807692307692308,F4,0,0,,2,2,1.0
+last_1_year,2019,[np.int64(2018)],RandomForest,0.6807692307692308,Championship,0,0,,1,1,1.0
+last_1_year,2021,[np.int64(2019)],RandomForest,0.7782051282051282,R64,22,32,0.6875,22,32,0.6875
+last_1_year,2021,[np.int64(2019)],RandomForest,0.7782051282051282,R32,3,6,0.5,10,16,0.625
+last_1_year,2021,[np.int64(2019)],RandomForest,0.7782051282051282,S16,1,1,1.0,5,8,0.625
+last_1_year,2021,[np.int64(2019)],RandomForest,0.7782051282051282,E8,1,1,1.0,3,4,0.75
+last_1_year,2021,[np.int64(2019)],RandomForest,0.7782051282051282,F4,0,1,0.0,0,1,0.0
+last_1_year,2021,[np.int64(2019)],RandomForest,0.7782051282051282,Championship,0,0,,0,0,
+last_1_year,2022,[np.int64(2021)],BaggingClassifier,0.7217948717948718,R64,21,32,0.65625,21,32,0.65625
+last_1_year,2022,[np.int64(2021)],BaggingClassifier,0.7217948717948718,R32,6,7,0.8571428571428571,12,16,0.75
+last_1_year,2022,[np.int64(2021)],BaggingClassifier,0.7217948717948718,S16,0,1,0.0,3,8,0.375
+last_1_year,2022,[np.int64(2021)],BaggingClassifier,0.7217948717948718,E8,1,1,1.0,3,4,0.75
+last_1_year,2022,[np.int64(2021)],BaggingClassifier,0.7217948717948718,F4,0,0,,1,1,1.0
+last_1_year,2022,[np.int64(2021)],BaggingClassifier,0.7217948717948718,Championship,0,0,,0,0,
+last_1_year,2023,[np.int64(2022)],BaggingClassifier,0.7025641025641025,R64,23,32,0.71875,23,32,0.71875
+last_1_year,2023,[np.int64(2022)],BaggingClassifier,0.7025641025641025,R32,4,8,0.5,9,16,0.5625
+last_1_year,2023,[np.int64(2022)],BaggingClassifier,0.7025641025641025,S16,1,2,0.5,3,8,0.375
+last_1_year,2023,[np.int64(2022)],BaggingClassifier,0.7025641025641025,E8,0,0,,1,4,0.25
+last_1_year,2023,[np.int64(2022)],BaggingClassifier,0.7025641025641025,F4,0,0,,1,2,0.5
+last_1_year,2023,[np.int64(2022)],BaggingClassifier,0.7025641025641025,Championship,0,0,,1,1,1.0
+last_1_year,2024,[np.int64(2023)],BaggingClassifier,0.6307692307692307,R64,21,32,0.65625,21,32,0.65625
+last_1_year,2024,[np.int64(2023)],BaggingClassifier,0.6307692307692307,R32,5,6,0.8333333333333334,15,16,0.9375
+last_1_year,2024,[np.int64(2023)],BaggingClassifier,0.6307692307692307,S16,4,5,0.8,5,8,0.625
+last_1_year,2024,[np.int64(2023)],BaggingClassifier,0.6307692307692307,E8,2,2,1.0,3,4,0.75
+last_1_year,2024,[np.int64(2023)],BaggingClassifier,0.6307692307692307,F4,0,1,0.0,1,2,0.5
+last_1_year,2024,[np.int64(2023)],BaggingClassifier,0.6307692307692307,Championship,0,0,,0,1,0.0
+last_1_year,2025,[np.int64(2024)],RandomForest,0.65,R64,27,32,0.84375,27,32,0.84375
+last_1_year,2025,[np.int64(2024)],RandomForest,0.65,R32,9,11,0.8181818181818182,13,16,0.8125
+last_1_year,2025,[np.int64(2024)],RandomForest,0.65,S16,5,5,1.0,8,8,1.0
+last_1_year,2025,[np.int64(2024)],RandomForest,0.65,E8,3,4,0.75,3,4,0.75
+last_1_year,2025,[np.int64(2024)],RandomForest,0.65,F4,0,0,,0,1,0.0
+last_1_year,2025,[np.int64(2024)],RandomForest,0.65,Championship,0,0,,0,0,
+last_3_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R64,22,32,0.6875,22,32,0.6875
+last_3_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R32,6,7,0.8571428571428571,14,16,0.875
+last_3_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,S16,2,5,0.4,4,8,0.5
+last_3_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,E8,0,0,,1,4,0.25
+last_3_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,F4,0,0,,2,2,1.0
+last_3_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,Championship,0,0,,1,1,1.0
+last_3_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,R64,22,32,0.6875,22,32,0.6875
+last_3_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,R32,5,7,0.7142857142857143,11,16,0.6875
+last_3_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,S16,2,2,1.0,6,8,0.75
+last_3_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,E8,1,1,1.0,3,4,0.75
+last_3_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,F4,0,0,,1,1,1.0
+last_3_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,Championship,0,0,,0,0,
+last_3_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,R64,25,32,0.78125,25,32,0.78125
+last_3_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,R32,7,9,0.7777777777777778,11,16,0.6875
+last_3_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,S16,0,3,0.0,2,8,0.25
+last_3_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,E8,0,0,,1,4,0.25
+last_3_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,F4,0,0,,1,1,1.0
+last_3_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,Championship,0,0,,0,0,
+last_3_years,2012,"[np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.6756756756756757,R64,19,32,0.59375,19,32,0.59375
+last_3_years,2012,"[np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.6756756756756757,R32,3,5,0.6,11,16,0.6875
+last_3_years,2012,"[np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.6756756756756757,S16,2,2,1.0,6,8,0.75
+last_3_years,2012,"[np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.6756756756756757,E8,1,2,0.5,3,4,0.75
+last_3_years,2012,"[np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.6756756756756757,F4,1,1,1.0,2,2,1.0
+last_3_years,2012,"[np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.6756756756756757,Championship,0,0,,1,1,1.0
+last_3_years,2013,"[np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.6810810810810811,R64,21,32,0.65625,21,32,0.65625
+last_3_years,2013,"[np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.6810810810810811,R32,6,6,1.0,13,16,0.8125
+last_3_years,2013,"[np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.6810810810810811,S16,3,5,0.6,6,8,0.75
+last_3_years,2013,"[np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.6810810810810811,E8,1,2,0.5,2,4,0.5
+last_3_years,2013,"[np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.6810810810810811,F4,0,0,,1,1,1.0
+last_3_years,2013,"[np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.6810810810810811,Championship,0,0,,0,0,
+last_3_years,2014,"[np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7027027027027027,R64,24,32,0.75,24,32,0.75
+last_3_years,2014,"[np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7027027027027027,R32,5,8,0.625,10,16,0.625
+last_3_years,2014,"[np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7027027027027027,S16,2,4,0.5,5,8,0.625
+last_3_years,2014,"[np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7027027027027027,E8,0,0,,1,4,0.25
+last_3_years,2014,"[np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7027027027027027,F4,0,0,,0,1,0.0
+last_3_years,2014,"[np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7027027027027027,Championship,0,0,,0,0,
+last_3_years,2015,"[np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6918918918918918,R64,27,32,0.84375,27,32,0.84375
+last_3_years,2015,"[np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6918918918918918,R32,9,12,0.75,13,16,0.8125
+last_3_years,2015,"[np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6918918918918918,S16,3,3,1.0,8,8,1.0
+last_3_years,2015,"[np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6918918918918918,E8,3,3,1.0,3,4,0.75
+last_3_years,2015,"[np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6918918918918918,F4,0,1,0.0,0,1,0.0
+last_3_years,2015,"[np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6918918918918918,Championship,0,0,,0,0,
+last_3_years,2016,"[np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7214714714714715,R64,23,32,0.71875,23,32,0.71875
+last_3_years,2016,"[np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7214714714714715,R32,6,7,0.8571428571428571,14,16,0.875
+last_3_years,2016,"[np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7214714714714715,S16,3,4,0.75,6,8,0.75
+last_3_years,2016,"[np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7214714714714715,E8,0,1,0.0,1,4,0.25
+last_3_years,2016,"[np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7214714714714715,F4,0,0,,0,1,0.0
+last_3_years,2016,"[np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7214714714714715,Championship,0,0,,0,0,
+last_3_years,2017,"[np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7484984984984985,R64,28,32,0.875,28,32,0.875
+last_3_years,2017,"[np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7484984984984985,R32,6,12,0.5,9,16,0.5625
+last_3_years,2017,"[np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7484984984984985,S16,3,3,1.0,6,8,0.75
+last_3_years,2017,"[np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7484984984984985,E8,1,2,0.5,2,4,0.5
+last_3_years,2017,"[np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7484984984984985,F4,0,1,0.0,0,1,0.0
+last_3_years,2017,"[np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7484984984984985,Championship,0,0,,0,0,
+last_3_years,2018,"[np.int64(2015), np.int64(2016), np.int64(2017)]",BaggingClassifier,0.7761261261261262,R64,21,32,0.65625,21,32,0.65625
+last_3_years,2018,"[np.int64(2015), np.int64(2016), np.int64(2017)]",BaggingClassifier,0.7761261261261262,R32,5,7,0.7142857142857143,10,16,0.625
+last_3_years,2018,"[np.int64(2015), np.int64(2016), np.int64(2017)]",BaggingClassifier,0.7761261261261262,S16,0,1,0.0,3,8,0.375
+last_3_years,2018,"[np.int64(2015), np.int64(2016), np.int64(2017)]",BaggingClassifier,0.7761261261261262,E8,0,0,,3,4,0.75
+last_3_years,2018,"[np.int64(2015), np.int64(2016), np.int64(2017)]",BaggingClassifier,0.7761261261261262,F4,0,0,,1,2,0.5
+last_3_years,2018,"[np.int64(2015), np.int64(2016), np.int64(2017)]",BaggingClassifier,0.7761261261261262,Championship,0,0,,1,1,1.0
+last_3_years,2019,"[np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.6324324324324324,R64,21,32,0.65625,21,32,0.65625
+last_3_years,2019,"[np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.6324324324324324,R32,5,6,0.8333333333333334,15,16,0.9375
+last_3_years,2019,"[np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.6324324324324324,S16,4,6,0.6666666666666666,5,8,0.625
+last_3_years,2019,"[np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.6324324324324324,E8,0,1,0.0,1,4,0.25
+last_3_years,2019,"[np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.6324324324324324,F4,0,0,,2,2,1.0
+last_3_years,2019,"[np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.6324324324324324,Championship,0,0,,1,1,1.0
+last_3_years,2021,"[np.int64(2017), np.int64(2018), np.int64(2019)]",BaggingClassifier,0.6793741109530584,R64,22,32,0.6875,22,32,0.6875
+last_3_years,2021,"[np.int64(2017), np.int64(2018), np.int64(2019)]",BaggingClassifier,0.6793741109530584,R32,3,7,0.42857142857142855,7,16,0.4375
+last_3_years,2021,"[np.int64(2017), np.int64(2018), np.int64(2019)]",BaggingClassifier,0.6793741109530584,S16,1,1,1.0,6,8,0.75
+last_3_years,2021,"[np.int64(2017), np.int64(2018), np.int64(2019)]",BaggingClassifier,0.6793741109530584,E8,0,0,,3,4,0.75
+last_3_years,2021,"[np.int64(2017), np.int64(2018), np.int64(2019)]",BaggingClassifier,0.6793741109530584,F4,0,0,,1,1,1.0
+last_3_years,2021,"[np.int64(2017), np.int64(2018), np.int64(2019)]",BaggingClassifier,0.6793741109530584,Championship,0,0,,0,0,
+last_3_years,2022,"[np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.6843527738264581,R64,23,32,0.71875,23,32,0.71875
+last_3_years,2022,"[np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.6843527738264581,R32,4,7,0.5714285714285714,10,16,0.625
+last_3_years,2022,"[np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.6843527738264581,S16,1,1,1.0,3,8,0.375
+last_3_years,2022,"[np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.6843527738264581,E8,0,1,0.0,3,4,0.75
+last_3_years,2022,"[np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.6843527738264581,F4,0,0,,1,1,1.0
+last_3_years,2022,"[np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.6843527738264581,Championship,0,0,,0,0,
+last_3_years,2023,"[np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7135135135135136,R64,25,32,0.78125,25,32,0.78125
+last_3_years,2023,"[np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7135135135135136,R32,4,10,0.4,9,16,0.5625
+last_3_years,2023,"[np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7135135135135136,S16,0,1,0.0,2,8,0.25
+last_3_years,2023,"[np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7135135135135136,E8,0,0,,0,4,0.0
+last_3_years,2023,"[np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7135135135135136,F4,0,0,,1,2,0.5
+last_3_years,2023,"[np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7135135135135136,Championship,0,0,,1,1,1.0
+last_3_years,2024,"[np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.654054054054054,R64,22,32,0.6875,22,32,0.6875
+last_3_years,2024,"[np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.654054054054054,R32,6,7,0.8571428571428571,15,16,0.9375
+last_3_years,2024,"[np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.654054054054054,S16,3,5,0.6,4,8,0.5
+last_3_years,2024,"[np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.654054054054054,E8,1,1,1.0,3,4,0.75
+last_3_years,2024,"[np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.654054054054054,F4,0,0,,1,2,0.5
+last_3_years,2024,"[np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.654054054054054,Championship,0,0,,0,1,0.0
+last_3_years,2025,"[np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7,R64,24,32,0.75,24,32,0.75
+last_3_years,2025,"[np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7,R32,5,8,0.625,11,16,0.6875
+last_3_years,2025,"[np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7,S16,2,2,1.0,6,8,0.75
+last_3_years,2025,"[np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7,E8,4,4,1.0,4,4,1.0
+last_3_years,2025,"[np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7,F4,1,1,1.0,1,1,1.0
+last_3_years,2025,"[np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7,Championship,0,0,,0,0,
+last_5_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R64,22,32,0.6875,22,32,0.6875
+last_5_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R32,6,7,0.8571428571428571,14,16,0.875
+last_5_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,S16,2,5,0.4,4,8,0.5
+last_5_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,E8,0,0,,1,4,0.25
+last_5_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,F4,0,0,,2,2,1.0
+last_5_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,Championship,0,0,,1,1,1.0
+last_5_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,R64,22,32,0.6875,22,32,0.6875
+last_5_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,R32,5,7,0.7142857142857143,11,16,0.6875
+last_5_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,S16,2,2,1.0,6,8,0.75
+last_5_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,E8,1,1,1.0,3,4,0.75
+last_5_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,F4,0,0,,1,1,1.0
+last_5_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,Championship,0,0,,0,0,
+last_5_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,R64,25,32,0.78125,25,32,0.78125
+last_5_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,R32,7,9,0.7777777777777778,11,16,0.6875
+last_5_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,S16,0,3,0.0,2,8,0.25
+last_5_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,E8,0,0,,1,4,0.25
+last_5_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,F4,0,0,,1,1,1.0
+last_5_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,Championship,0,0,,0,0,
+last_5_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,R64,21,32,0.65625,21,32,0.65625
+last_5_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,R32,4,7,0.5714285714285714,13,16,0.8125
+last_5_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,S16,2,2,1.0,6,8,0.75
+last_5_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,E8,1,2,0.5,2,4,0.5
+last_5_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,F4,1,1,1.0,2,2,1.0
+last_5_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,Championship,0,0,,1,1,1.0
+last_5_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,R64,22,32,0.6875,22,32,0.6875
+last_5_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,R32,7,7,1.0,12,16,0.75
+last_5_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,S16,1,5,0.2,4,8,0.5
+last_5_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,E8,0,0,,2,4,0.5
+last_5_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,F4,0,0,,1,1,1.0
+last_5_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,Championship,0,0,,0,0,
+last_5_years,2014,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7185616076150185,R64,26,32,0.8125,26,32,0.8125
+last_5_years,2014,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7185616076150185,R32,7,10,0.7,11,16,0.6875
+last_5_years,2014,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7185616076150185,S16,2,3,0.6666666666666666,3,8,0.375
+last_5_years,2014,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7185616076150185,E8,0,1,0.0,1,4,0.25
+last_5_years,2014,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7185616076150185,F4,0,0,,0,1,0.0
+last_5_years,2014,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7185616076150185,Championship,0,0,,0,0,
+last_5_years,2015,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6939714436805924,R64,26,32,0.8125,26,32,0.8125
+last_5_years,2015,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6939714436805924,R32,9,12,0.75,13,16,0.8125
+last_5_years,2015,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6939714436805924,S16,3,3,1.0,7,8,0.875
+last_5_years,2015,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6939714436805924,E8,2,2,1.0,3,4,0.75
+last_5_years,2015,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6939714436805924,F4,1,1,1.0,1,1,1.0
+last_5_years,2015,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.6939714436805924,Championship,0,0,,0,0,
+last_5_years,2016,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7166578529878371,R64,22,32,0.6875,22,32,0.6875
+last_5_years,2016,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7166578529878371,R32,4,6,0.6666666666666666,14,16,0.875
+last_5_years,2016,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7166578529878371,S16,2,4,0.5,6,8,0.75
+last_5_years,2016,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7166578529878371,E8,0,0,,2,4,0.5
+last_5_years,2016,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7166578529878371,F4,0,0,,0,1,0.0
+last_5_years,2016,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7166578529878371,Championship,0,0,,0,0,
+last_5_years,2017,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7557377049180328,R64,29,32,0.90625,29,32,0.90625
+last_5_years,2017,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7557377049180328,R32,6,13,0.46153846153846156,9,16,0.5625
+last_5_years,2017,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7557377049180328,S16,3,3,1.0,5,8,0.625
+last_5_years,2017,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7557377049180328,E8,1,1,1.0,2,4,0.5
+last_5_years,2017,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7557377049180328,F4,0,1,0.0,0,1,0.0
+last_5_years,2017,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.7557377049180328,Championship,0,0,,0,0,
+last_5_years,2018,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7475409836065575,R64,26,32,0.8125,26,32,0.8125
+last_5_years,2018,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7475409836065575,R32,7,11,0.6363636363636364,10,16,0.625
+last_5_years,2018,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7475409836065575,S16,0,1,0.0,5,8,0.625
+last_5_years,2018,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7475409836065575,E8,1,1,1.0,3,4,0.75
+last_5_years,2018,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7475409836065575,F4,0,0,,1,2,0.5
+last_5_years,2018,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7475409836065575,Championship,0,0,,1,1,1.0
+last_5_years,2019,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7262823902696985,R64,22,32,0.6875,22,32,0.6875
+last_5_years,2019,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7262823902696985,R32,6,7,0.8571428571428571,15,16,0.9375
+last_5_years,2019,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7262823902696985,S16,4,6,0.6666666666666666,5,8,0.625
+last_5_years,2019,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7262823902696985,E8,0,1,0.0,1,4,0.25
+last_5_years,2019,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7262823902696985,F4,0,0,,2,2,1.0
+last_5_years,2019,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7262823902696985,Championship,0,0,,1,1,1.0
+last_5_years,2021,"[np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7346906398730829,R64,24,32,0.75,24,32,0.75
+last_5_years,2021,"[np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7346906398730829,R32,7,10,0.7,10,16,0.625
+last_5_years,2021,"[np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7346906398730829,S16,0,0,,6,8,0.75
+last_5_years,2021,"[np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7346906398730829,E8,0,0,,3,4,0.75
+last_5_years,2021,"[np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7346906398730829,F4,1,1,1.0,1,1,1.0
+last_5_years,2021,"[np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7346906398730829,Championship,0,0,,0,0,
+last_5_years,2022,"[np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.7055526176626123,R64,21,32,0.65625,21,32,0.65625
+last_5_years,2022,"[np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.7055526176626123,R32,4,5,0.8,11,16,0.6875
+last_5_years,2022,"[np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.7055526176626123,S16,2,3,0.6666666666666666,5,8,0.625
+last_5_years,2022,"[np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.7055526176626123,E8,0,1,0.0,3,4,0.75
+last_5_years,2022,"[np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.7055526176626123,F4,0,0,,1,1,1.0
+last_5_years,2022,"[np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.7055526176626123,Championship,0,0,,0,0,
+last_5_years,2023,"[np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.6798519301956637,R64,24,32,0.75,24,32,0.75
+last_5_years,2023,"[np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.6798519301956637,R32,4,9,0.4444444444444444,10,16,0.625
+last_5_years,2023,"[np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.6798519301956637,S16,0,1,0.0,3,8,0.375
+last_5_years,2023,"[np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.6798519301956637,E8,0,0,,1,4,0.25
+last_5_years,2023,"[np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.6798519301956637,F4,0,0,,1,2,0.5
+last_5_years,2023,"[np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.6798519301956637,Championship,0,0,,0,1,0.0
+last_5_years,2024,"[np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",BaggingClassifier,0.6559139784946236,R64,18,32,0.5625,18,32,0.5625
+last_5_years,2024,"[np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",BaggingClassifier,0.6559139784946236,R32,4,4,1.0,14,16,0.875
+last_5_years,2024,"[np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",BaggingClassifier,0.6559139784946236,S16,1,2,0.5,3,8,0.375
+last_5_years,2024,"[np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",BaggingClassifier,0.6559139784946236,E8,1,1,1.0,3,4,0.75
+last_5_years,2024,"[np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",BaggingClassifier,0.6559139784946236,F4,0,0,,1,2,0.5
+last_5_years,2024,"[np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",BaggingClassifier,0.6559139784946236,Championship,0,0,,1,1,1.0
+last_5_years,2025,"[np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.6943676395289298,R64,26,32,0.8125,26,32,0.8125
+last_5_years,2025,"[np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.6943676395289298,R32,9,10,0.9,13,16,0.8125
+last_5_years,2025,"[np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.6943676395289298,S16,4,5,0.8,7,8,0.875
+last_5_years,2025,"[np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.6943676395289298,E8,2,2,1.0,4,4,1.0
+last_5_years,2025,"[np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.6943676395289298,F4,0,0,,0,1,0.0
+last_5_years,2025,"[np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.6943676395289298,Championship,0,0,,0,0,
+last_10_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R64,22,32,0.6875,22,32,0.6875
+last_10_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,R32,6,7,0.8571428571428571,14,16,0.875
+last_10_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,S16,2,5,0.4,4,8,0.5
+last_10_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,E8,0,0,,1,4,0.25
+last_10_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,F4,0,0,,2,2,1.0
+last_10_years,2009,[np.int64(2008)],BaggingClassifier,0.8256410256410256,Championship,0,0,,1,1,1.0
+last_10_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,R64,22,32,0.6875,22,32,0.6875
+last_10_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,R32,5,7,0.7142857142857143,11,16,0.6875
+last_10_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,S16,2,2,1.0,6,8,0.75
+last_10_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,E8,1,1,1.0,3,4,0.75
+last_10_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,F4,0,0,,1,1,1.0
+last_10_years,2010,"[np.int64(2008), np.int64(2009)]",RandomForest,0.7852307692307692,Championship,0,0,,0,0,
+last_10_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,R64,25,32,0.78125,25,32,0.78125
+last_10_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,R32,7,9,0.7777777777777778,11,16,0.6875
+last_10_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,S16,0,3,0.0,2,8,0.25
+last_10_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,E8,0,0,,1,4,0.25
+last_10_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,F4,0,0,,1,1,1.0
+last_10_years,2011,"[np.int64(2008), np.int64(2009), np.int64(2010)]",RandomForest,0.7382645803698435,Championship,0,0,,0,0,
+last_10_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,R64,21,32,0.65625,21,32,0.65625
+last_10_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,R32,4,7,0.5714285714285714,13,16,0.8125
+last_10_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,S16,2,2,1.0,6,8,0.75
+last_10_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,E8,1,2,0.5,2,4,0.5
+last_10_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,F4,1,1,1.0,2,2,1.0
+last_10_years,2012,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011)]",RandomForest,0.713469387755102,Championship,0,0,,1,1,1.0
+last_10_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,R64,22,32,0.6875,22,32,0.6875
+last_10_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,R32,7,7,1.0,12,16,0.75
+last_10_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,S16,1,5,0.2,4,8,0.5
+last_10_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,E8,0,0,,2,4,0.5
+last_10_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,F4,0,0,,1,1,1.0
+last_10_years,2013,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012)]",RandomForest,0.7362007168458782,Championship,0,0,,0,0,
+last_10_years,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,R64,25,32,0.78125,25,32,0.78125
+last_10_years,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,R32,6,9,0.6666666666666666,11,16,0.6875
+last_10_years,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,S16,2,3,0.6666666666666666,5,8,0.625
+last_10_years,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,E8,0,1,0.0,1,4,0.25
+last_10_years,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,F4,0,0,,0,1,0.0
+last_10_years,2014,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013)]",RandomForest,0.7257297297297297,Championship,0,0,,0,0,
+last_10_years,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,R64,27,32,0.84375,27,32,0.84375
+last_10_years,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,R32,9,12,0.75,13,16,0.8125
+last_10_years,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,S16,3,3,1.0,7,8,0.875
+last_10_years,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,E8,2,2,1.0,3,4,0.75
+last_10_years,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,F4,1,1,1.0,1,1,1.0
+last_10_years,2015,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014)]",RandomForest,0.718230419673884,Championship,0,0,,0,0,
+last_10_years,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,R64,21,32,0.65625,21,32,0.65625
+last_10_years,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,R32,5,6,0.8333333333333334,14,16,0.875
+last_10_years,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,S16,3,3,1.0,7,8,0.875
+last_10_years,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,E8,1,2,0.5,2,4,0.5
+last_10_years,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,F4,0,0,,0,1,0.0
+last_10_years,2016,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015)]",RandomForest,0.7449598021026592,Championship,0,0,,0,0,
+last_10_years,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,R64,29,32,0.90625,29,32,0.90625
+last_10_years,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,R32,8,13,0.6153846153846154,11,16,0.6875
+last_10_years,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,S16,4,4,1.0,5,8,0.625
+last_10_years,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,E8,1,1,1.0,2,4,0.5
+last_10_years,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,F4,1,1,1.0,1,1,1.0
+last_10_years,2017,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016)]",RandomForest,0.745945945945946,Championship,0,0,,0,0,
+last_10_years,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,R64,23,32,0.71875,23,32,0.71875
+last_10_years,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,R32,5,8,0.625,10,16,0.625
+last_10_years,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,S16,1,2,0.5,4,8,0.5
+last_10_years,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,E8,1,1,1.0,3,4,0.75
+last_10_years,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,F4,0,0,,1,2,0.5
+last_10_years,2018,"[np.int64(2008), np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017)]",RandomForest,0.7418830317335432,Championship,0,0,,1,1,1.0
+last_10_years,2019,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7240361919748229,R64,22,32,0.6875,22,32,0.6875
+last_10_years,2019,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7240361919748229,R32,7,7,1.0,16,16,1.0
+last_10_years,2019,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7240361919748229,S16,3,6,0.5,5,8,0.625
+last_10_years,2019,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7240361919748229,E8,0,1,0.0,1,4,0.25
+last_10_years,2019,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7240361919748229,F4,0,0,,2,2,1.0
+last_10_years,2019,"[np.int64(2009), np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018)]",RandomForest,0.7240361919748229,Championship,0,0,,1,1,1.0
+last_10_years,2021,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7240361919748229,R64,24,32,0.75,24,32,0.75
+last_10_years,2021,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7240361919748229,R32,7,9,0.7777777777777778,11,16,0.6875
+last_10_years,2021,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7240361919748229,S16,1,1,1.0,6,8,0.75
+last_10_years,2021,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7240361919748229,E8,1,1,1.0,3,4,0.75
+last_10_years,2021,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7240361919748229,F4,0,1,0.0,0,1,0.0
+last_10_years,2021,"[np.int64(2010), np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019)]",RandomForest,0.7240361919748229,Championship,0,0,,0,0,
+last_10_years,2022,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.719145030159979,R64,24,32,0.75,24,32,0.75
+last_10_years,2022,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.719145030159979,R32,6,9,0.6666666666666666,10,16,0.625
+last_10_years,2022,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.719145030159979,S16,2,2,1.0,4,8,0.5
+last_10_years,2022,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.719145030159979,E8,0,1,0.0,3,4,0.75
+last_10_years,2022,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.719145030159979,F4,0,0,,1,1,1.0
+last_10_years,2022,"[np.int64(2011), np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021)]",RandomForest,0.719145030159979,Championship,0,0,,0,0,
+last_10_years,2023,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7305009179124049,R64,20,32,0.625,20,32,0.625
+last_10_years,2023,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7305009179124049,R32,3,6,0.5,10,16,0.625
+last_10_years,2023,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7305009179124049,S16,1,4,0.25,3,8,0.375
+last_10_years,2023,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7305009179124049,E8,0,0,,1,4,0.25
+last_10_years,2023,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7305009179124049,F4,0,0,,1,2,0.5
+last_10_years,2023,"[np.int64(2012), np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022)]",RandomForest,0.7305009179124049,Championship,0,0,,0,1,0.0
+last_10_years,2024,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7078022554419092,R64,23,32,0.71875,23,32,0.71875
+last_10_years,2024,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7078022554419092,R32,7,8,0.875,15,16,0.9375
+last_10_years,2024,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7078022554419092,S16,2,4,0.5,3,8,0.375
+last_10_years,2024,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7078022554419092,E8,1,1,1.0,3,4,0.75
+last_10_years,2024,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7078022554419092,F4,0,0,,2,2,1.0
+last_10_years,2024,"[np.int64(2013), np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023)]",RandomForest,0.7078022554419092,Championship,0,0,,1,1,1.0
+last_10_years,2025,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7167977970102283,R64,26,32,0.8125,26,32,0.8125
+last_10_years,2025,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7167977970102283,R32,8,10,0.8,12,16,0.75
+last_10_years,2025,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7167977970102283,S16,4,4,1.0,8,8,1.0
+last_10_years,2025,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7167977970102283,E8,4,4,1.0,4,4,1.0
+last_10_years,2025,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7167977970102283,F4,0,1,0.0,0,1,0.0
+last_10_years,2025,"[np.int64(2014), np.int64(2015), np.int64(2016), np.int64(2017), np.int64(2018), np.int64(2019), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]",RandomForest,0.7167977970102283,Championship,0,0,,0,0,

@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Virtual environment (do NOT commit — Streamlit Cloud builds from requirements.txt)
+venv/
+.venv/
+env/
+
+# Local logs / scratch output
+precompute_log.txt
+model_3_0_output.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
