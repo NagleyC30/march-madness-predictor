@@ -53,12 +53,15 @@ def get_features(ratings):
 # DATASET CONSTRUCTION
 # ──────────────────────────────────────────────────────────────
 
-def build_game_dataset(games, ratings, features):
+def build_game_dataset(games, ratings, features, keep_meta=False):
     """Turn games + ratings into a model matrix.
 
     Each row: {feature}_DIFF = home_rating - away_rating for every feature, plus
     HOME_COURT (0 on neutral courts, else 1) and the HOME_WIN label. Games where
     either team lacks a rating row are dropped by the inner joins.
+
+    keep_meta=True also carries DATE/HOME/AWAY/GAME_TYPE/NEUTRAL through for the
+    backtest to group by. Training ignores them (it selects feature_columns).
     """
     feat = ratings[["YEAR", "TEAM"] + features]
 
@@ -68,6 +71,10 @@ def build_game_dataset(games, ratings, features):
                 on=["YEAR", "AWAY"], how="inner", suffixes=("_H", "_A"))
 
     out = pd.DataFrame({"YEAR": m["YEAR"].values})
+    if keep_meta:
+        for col in ("DATE", "HOME", "AWAY", "GAME_TYPE", "NEUTRAL"):
+            if col in m.columns:
+                out[col] = m[col].values
     for c in features:
         out[f"{c}_DIFF"] = (m[f"{c}_H"] - m[f"{c}_A"]).values
     out[HOME_COURT] = np.where(m["NEUTRAL"].values, 0.0, 1.0)

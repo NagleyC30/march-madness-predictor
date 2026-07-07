@@ -79,6 +79,20 @@ def eval_custom_metric_cached(clean_df, metric_cols, target_year, window_name):
         df_raw, clean_df, tuple(metric_cols), target_year, window_name)
 
 
+@st.cache_data
+def load_game_backtest():
+    """Load the precomputed general-model backtest CSVs (from backtest.py)."""
+    out = {}
+    for key, fname in {
+        "summary": "game_backtest_summary.csv",
+        "calib": "game_calibration.csv",
+        "meta": "game_backtest_meta.csv",
+    }.items():
+        path = os.path.join(DATA_DIR, fname)
+        out[key] = pd.read_csv(path) if os.path.exists(path) else None
+    return out
+
+
 @st.cache_resource(show_spinner="Loading game model…")
 def load_game_predictor():
     """Load the pre-trained general game model + its ratings table (both built by
@@ -119,7 +133,8 @@ st.sidebar.caption(
 page = st.sidebar.radio(
     "Navigate",
     ["Overview", "Bracket Predictions", "Head-to-Head", "Game Predictor",
-     "Model Accuracy", "Betting Simulation", "Custom Metric", "Data Explorer"],
+     "Backtest & Calibration", "Model Accuracy", "Betting Simulation",
+     "Custom Metric", "Data Explorer"],
 )
 
 if results["meta"] is not None:
@@ -184,6 +199,8 @@ if page == "Overview":
 - **Head-to-Head** — pick any two *tournament* teams and get a live prediction.
 - **Game Predictor** — predict *any* game (regular season or tournament) for any
   two D1 teams, with home-court advantage.
+- **Backtest & Calibration** — walk-forward accuracy and calibration of the
+  general game model across ~87k games.
 - **Model Accuracy** — walk-forward accuracy by training window and tournament round.
 - **Betting Simulation** — hypothetical P&L at various confidence thresholds.
 - **Custom Metric** — upload your own metric and see how much it helps the model.
@@ -409,6 +426,118 @@ elif page == "Game Predictor":
                     "Flip the home/away toggle to see how much home court moves "
                     "the line — it's worth roughly 3–4 points on a neutral game."
                 )
+
+
+# ──────────────────────────────────────────────────────────────
+# PAGE: BACKTEST & CALIBRATION  (general game model)
+# ──────────────────────────────────────────────────────────────
+
+elif page == "Backtest & Calibration":
+    st.title("Game Model — Backtest & Calibration")
+    bt = load_game_backtest()
+    if bt["meta"] is None:
+        st.warning(
+            "No backtest data found. Generate it locally, then redeploy:\n\n"
+            "```\npython fetch_data.py 2008 2026\npython backtest.py\n```"
+        )
+    else:
+        meta = bt["meta"].iloc[0]
+        summary = bt["summary"]
+        calib = bt["calib"]
+
+        st.markdown(
+            "How well does the Game Predictor actually do? This is a "
+            "**walk-forward** backtest: for each season the model is trained "
+            "*only on earlier seasons*, then asked to predict that season's "
+            "games — so it never sees the future it's tested on."
+        )
+
+        c1, c2, c3, c4 = st.columns(4)
+        delta = meta["accuracy"] - meta["base_home_acc"]
+        c1.metric("Accuracy", fmt_pct(meta["accuracy"]),
+                  delta=f"{delta:+.1%} vs. always-home",
+                  help="Share of games where the model's favorite actually won.")
+        c2.metric("Brier score", f"{meta['brier']:.3f}",
+                  help="Mean squared error of the probabilities (lower is better; "
+                       "0 is perfect, 0.25 is a coin flip).")
+        c3.metric("Log loss", f"{meta['log_loss']:.3f}",
+                  help="Penalizes confident wrong calls (lower is better).")
+        c4.metric("Games evaluated", f"{int(meta['n_games']):,}",
+                  help=f"{int(meta['season_min'])}–{int(meta['season_max'])} "
+                       f"({int(meta['n_seasons'])} seasons)")
+
+        st.info(
+            "⚠️ Ratings are **season-aggregate**, so a game's features already "
+            "reflect that game — in-season accuracy is a little optimistic. "
+            "Point-in-time ratings would tighten this; walk-forward training "
+            "already removes the separate 'training on the future' bias."
+        )
+
+        st.subheader("Accuracy over time")
+        by_year = summary.groupby("YEAR")[["correct", "n"]].sum()
+        by_year["accuracy"] = by_year["correct"] / by_year["n"]
+        by_year = by_year.reset_index()
+        line = alt.Chart(by_year).mark_line(point=True).encode(
+            x=alt.X("YEAR:O", title="Season"),
+            y=alt.Y("accuracy:Q", title="Accuracy",
+                    scale=alt.Scale(domain=[0.5, 0.9]), axis=alt.Axis(format="%")),
+            tooltip=["YEAR", alt.Tooltip("accuracy:Q", format=".1%"), "n"],
+        )
+        base = alt.Chart(pd.DataFrame({"y": [meta["base_home_acc"]]})).mark_rule(
+            strokeDash=[4, 4], color="gray").encode(y="y:Q")
+        st.altair_chart((line + base).properties(height=320), width="stretch")
+        st.caption("Dashed line = always-pick-home baseline. The dip around "
+                   "2021 reflects the empty-arena COVID season.")
+
+        st.subheader("Accuracy by game type")
+        by_type = summary.groupby("GAME_TYPE")[["correct", "n"]].sum()
+        by_type["accuracy"] = by_type["correct"] / by_type["n"]
+        by_type = by_type.reset_index()
+        type_labels = {"nonconf": "Non-conference", "conf": "Conference",
+                       "conf_tourney": "Conf. tournament", "postseason": "Postseason"}
+        by_type["label"] = by_type["GAME_TYPE"].map(type_labels)
+        st.altair_chart(
+            alt.Chart(by_type).mark_bar().encode(
+                x=alt.X("accuracy:Q", title="Accuracy",
+                        scale=alt.Scale(domain=[0.5, 0.9]), axis=alt.Axis(format="%")),
+                y=alt.Y("label:N", title=None, sort="-x"),
+                tooltip=["label", alt.Tooltip("accuracy:Q", format=".1%"), "n"],
+                color=alt.value("#FF4B4B"),
+            ).properties(height=200), width="stretch")
+        st.caption("Non-conference games (more mismatches) are easiest; "
+                   "postseason games (evenly matched) are hardest.")
+
+        st.subheader("Calibration")
+        st.markdown(
+            "When the model says a team has a **70% chance**, does it win about "
+            "70% of the time? Points on the diagonal mean the probabilities are "
+            "trustworthy."
+        )
+        group_labels = {"all": "All games", "home": "Home/away games only",
+                        "neutral": "Neutral-court games only",
+                        "nonconf": "Non-conference", "conf": "Conference",
+                        "conf_tourney": "Conf. tournament", "postseason": "Postseason"}
+        avail = [g for g in group_labels if g in set(calib["group"])]
+        pick = st.selectbox("Show calibration for", avail,
+                            format_func=lambda g: group_labels.get(g, g))
+        cg = calib[calib["group"] == pick].copy()
+        cg["Predicted"] = cg["sum_pred"] / cg["n"]
+        cg["Actual"] = cg["sum_actual"] / cg["n"]
+
+        diag = alt.Chart(pd.DataFrame({"x": [0, 1], "y": [0, 1]})).mark_line(
+            strokeDash=[5, 5], color="gray").encode(x="x:Q", y="y:Q")
+        pts = alt.Chart(cg).mark_circle(opacity=0.85).encode(
+            x=alt.X("Predicted:Q", title="Model predicted P(home win)",
+                    scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%")),
+            y=alt.Y("Actual:Q", title="Observed home win rate",
+                    scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%")),
+            size=alt.Size("n:Q", title="Games", scale=alt.Scale(range=[20, 500])),
+            tooltip=[alt.Tooltip("Predicted:Q", format=".1%"),
+                     alt.Tooltip("Actual:Q", format=".1%"), "n"],
+            color=alt.value("#1f77b4"),
+        )
+        st.altair_chart((diag + pts).properties(height=400), width="stretch")
+        st.caption("Bubble size = number of games in that probability range.")
 
 
 # ──────────────────────────────────────────────────────────────
