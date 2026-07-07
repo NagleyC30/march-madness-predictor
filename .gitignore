@@ -13,6 +13,9 @@ env/
 precompute_log.txt
 model_3_0_output.txt
 
+# Large, reproducible game log (regenerate with: python fetch_data.py 2008 2026)
+data/games.csv
+
 # OS / editor
 .DS_Store
 Thumbs.db
