@@ -23,19 +23,33 @@
 #   python fetch_data.py                # just 2024
 #   python fetch_data.py 2024           # one year
 #   python fetch_data.py 2015 2024      # inclusive range 2015..2024
+#   python fetch_data.py --pit 2024     # point-in-time table (data/games_pit.csv)
+#   python fetch_data.py --pit 2011 2026
+#
+# Point-in-time uses barttorvik.com's daily "time machine" snapshots (from ~2011)
+# to attach each game the ratings that existed before it — see the section below.
 
 import csv
+import gzip
 import io
+import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import pandas as pd
 
 DATA_DIR = "data"
 BASE_URL = "https://barttorvik.com/{year}_{kind}.csv"
+# Daily "time machine" snapshot of the full ratings table as it stood that
+# morning (point-in-time). Available from ~2011. YYYYMMDD, gzipped JSON arrays
+# in the same column order as {year}_team_results.csv.
+TIMEMACHINE_URL = (
+    "https://barttorvik.com/timemachine/team_results/{date}_team_results.json.gz")
+TIMEMACHINE_CACHE = os.path.join(DATA_DIR, "timemachine")
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -74,14 +88,12 @@ def _download(year, kind):
 # RATINGS  (team_results.csv — has a clean header)
 # ──────────────────────────────────────────────────────────────
 
-def parse_team_results(year):
-    """Return a tidy ratings frame: YEAR, TEAM, CONF, <numeric features>."""
-    text = _download(year, "team_results")
-    # index_col=False stops pandas from promoting the first column to an index
-    # when older seasons carry a stray trailing field (which would shift every
-    # column, mislabeling conference codes as team names).
-    df = pd.read_csv(io.StringIO(text), index_col=False)
+def _tidy_ratings(df, year):
+    """Shared cleanup: rename, stamp YEAR, keep TEAM/CONF + numeric features.
+    Used by both the season CSV and the point-in-time JSON snapshots."""
     df = df.rename(columns=RATINGS_RENAME)
+    if "YEAR" in df.columns:
+        df = df.drop(columns=["YEAR"])
     df.insert(0, "YEAR", year)
 
     feature_cols = []
@@ -95,6 +107,22 @@ def parse_team_results(year):
 
     df["TEAM"] = df["TEAM"].astype(str).str.strip()
     return df[["YEAR", "TEAM", "CONF"] + feature_cols]
+
+
+def _season_header(year):
+    """Column names for a season's team_results (used to label snapshot arrays)."""
+    text = _download(year, "team_results")
+    return pd.read_csv(io.StringIO(text), index_col=False, nrows=0).columns.tolist()
+
+
+def parse_team_results(year):
+    """Return a tidy ratings frame: YEAR, TEAM, CONF, <numeric features>."""
+    text = _download(year, "team_results")
+    # index_col=False stops pandas from promoting the first column to an index
+    # when older seasons carry a stray trailing field (which would shift every
+    # column, mislabeling conference codes as team names).
+    df = pd.read_csv(io.StringIO(text), index_col=False)
+    return _tidy_ratings(df, year)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -140,6 +168,127 @@ def parse_super_sked(year):
         # super_sked lists each game once, but guard against any dupes.
         games = games.drop_duplicates(subset=["DATE", "HOME", "AWAY"])
     return games
+
+
+# ──────────────────────────────────────────────────────────────
+# POINT-IN-TIME RATINGS  (time machine daily snapshots)
+# ──────────────────────────────────────────────────────────────
+#
+# ratings.csv is season-aggregate, so a November game "knows" the team's final
+# rating. The time machine gives each team's rating as it stood on any morning,
+# letting us attach each game the ratings that existed *before* it was played.
+# build_point_in_time_games() writes data/games_pit.csv, an as-of-date version
+# of the model matrix (feature diffs + HOME_COURT + HOME_WIN) for honest
+# backtesting. Snapshots are cached locally so re-runs are cheap.
+
+def _download_timemachine(date_str):
+    """Fetch one snapshot ('YYYYMMDD'). Returns a list of team records, or None
+    if that date has no snapshot (404). Caches the gzip locally."""
+    os.makedirs(TIMEMACHINE_CACHE, exist_ok=True)
+    cache_path = os.path.join(TIMEMACHINE_CACHE, f"{date_str}.json.gz")
+    if os.path.exists(cache_path):
+        try:
+            with gzip.open(cache_path) as f:
+                return json.load(f)
+        except Exception:            # corrupt cache — refetch
+            os.remove(cache_path)
+
+    url = TIMEMACHINE_URL.format(date=date_str)
+    last_err = None
+    for attempt in range(3):
+        try:
+            req = Request(url, headers={"User-Agent": USER_AGENT})
+            with urlopen(req, timeout=45) as resp:
+                raw = resp.read()
+            data = json.loads(gzip.decompress(raw))   # validate before caching
+            with open(cache_path, "wb") as f:
+                f.write(raw)
+            return data
+        except HTTPError as e:
+            if e.code == 404:
+                return None
+            last_err = e
+            time.sleep(1.5 * (attempt + 1))
+        except Exception as e:  # noqa: BLE001 — transient network/gzip; retry
+            last_err = e
+            time.sleep(1.5 * (attempt + 1))
+    # A single corrupt/unreachable snapshot shouldn't abort a multi-thousand-file
+    # pull — treat it as missing so the nearest-snapshot walk-back handles it.
+    print(f"  ! skipping {date_str}: {last_err}", flush=True)
+    return None
+
+
+def _snapshot_ratings(date_str, year, header):
+    """Tidy ratings frame (indexed by TEAM) as of date_str, or None if missing.
+    ``header`` labels the snapshot's positional arrays (extra trailing field, if
+    any, is dropped by zip)."""
+    records = _download_timemachine(date_str)
+    if records is None:
+        return None
+    df = pd.DataFrame([dict(zip(header, r)) for r in records])
+    if "team" not in df.columns and "TEAM" not in df.columns:
+        return None
+    tidy = _tidy_ratings(df, year)
+    return tidy.set_index("TEAM")
+
+
+def _nearest_snapshot(date_obj, year, header, cache, max_back=7):
+    """Ratings as of date_obj, walking back up to max_back days to the nearest
+    available snapshot. Results (incl. misses) are memoised in ``cache``."""
+    for back in range(max_back + 1):
+        key = (date_obj - timedelta(days=back)).strftime("%Y%m%d")
+        if key not in cache:
+            cache[key] = _snapshot_ratings(key, year, header)
+        if cache[key] is not None:
+            return cache[key]
+    return None
+
+
+def build_point_in_time_games(years, out_path=None):
+    """Attach each game the ratings that existed before it, writing
+    data/games_pit.csv (feature diffs + HOME_COURT + HOME_WIN). Needs
+    data/games.csv and data/ratings.csv (run the main fetch first)."""
+    out_path = out_path or os.path.join(DATA_DIR, "games_pit.csv")
+    games_all = pd.read_csv(os.path.join(DATA_DIR, "games.csv"))
+    ratings = pd.read_csv(os.path.join(DATA_DIR, "ratings.csv"))
+    features = [c for c in ratings.columns if c not in ("YEAR", "TEAM", "CONF")]
+    diff_cols = [f"{c}_DIFF" for c in features]
+
+    parts = []
+    for year in years:
+        gy = games_all[games_all["YEAR"] == year]
+        if gy.empty:
+            print(f"[{year}] no games in games.csv — skipping", flush=True)
+            continue
+        header = _season_header(year)
+        cache = {}
+        rows, unmatched = [], 0
+        for g in gy.itertuples(index=False):
+            date_obj = datetime.strptime(g.DATE, "%Y-%m-%d").date()
+            # Barttorvik's YYYYMMDD snapshot already includes that day's games, so
+            # we anchor on the DAY BEFORE — ratings reflecting results only up to
+            # (not including) the game we're about to predict.
+            snap = _nearest_snapshot(date_obj - timedelta(days=1), year, header, cache)
+            if snap is None or g.HOME not in snap.index or g.AWAY not in snap.index:
+                unmatched += 1
+                continue
+            h, a = snap.loc[g.HOME], snap.loc[g.AWAY]
+            row = {"YEAR": year, "DATE": g.DATE, "HOME": g.HOME, "AWAY": g.AWAY,
+                   "GAME_TYPE": g.GAME_TYPE, "NEUTRAL": g.NEUTRAL}
+            for c, dc in zip(features, diff_cols):
+                row[dc] = float(h[c]) - float(a[c])
+            row["HOME_COURT"] = 0 if g.NEUTRAL else 1
+            row["HOME_WIN"] = int(g.HOME_WIN)
+            rows.append(row)
+        parts.append(pd.DataFrame(rows))
+        n_snaps = sum(1 for v in cache.values() if v is not None)
+        print(f"[{year}] {len(rows):,} PIT games, {unmatched} unmatched, "
+              f"{n_snaps} snapshots", flush=True)
+
+    out = pd.concat(parts, ignore_index=True)
+    out.to_csv(out_path, index=False)
+    print(f"\nWrote {out_path}: {len(out):,} rows, {len(diff_cols)} feature diffs")
+    return out
 
 
 # ──────────────────────────────────────────────────────────────
@@ -211,4 +360,9 @@ def parse_years(argv):
 
 
 if __name__ == "__main__":
-    build(parse_years(sys.argv[1:]))
+    args = sys.argv[1:]
+    if args and args[0] == "--pit":
+        # Point-in-time table (needs data/games.csv + data/ratings.csv first).
+        build_point_in_time_games(parse_years(args[1:]))
+    else:
+        build(parse_years(args))

@@ -38,3 +38,5 @@ Run the experiment after having the model build and test on every year from 2008
 
 4\. Apply each model to the 2027 tournament. 
 
+5\. Build a current-season predictor for the upcoming year's games: pull the live/preseason Barttorvik ratings for the in-progress 2026–27 season and let the app predict upcoming regular-season and tournament games as they're scheduled (updating as ratings refresh through the season). Extends the general Game Predictor, which currently covers completed seasons 2008–2026.
+

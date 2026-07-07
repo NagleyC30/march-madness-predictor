@@ -93,6 +93,20 @@ def load_game_backtest():
     return out
 
 
+@st.cache_data
+def load_game_backtest_pit():
+    """Load the point-in-time vs. season-aggregate comparison (backtest_pit.py)."""
+    out = {}
+    for key, fname in {
+        "summary": "game_backtest_pit_summary.csv",
+        "calib": "game_calibration_pit.csv",
+        "meta": "game_backtest_pit_meta.csv",
+    }.items():
+        path = os.path.join(DATA_DIR, fname)
+        out[key] = pd.read_csv(path) if os.path.exists(path) else None
+    return out
+
+
 @st.cache_resource(show_spinner="Loading game model…")
 def load_game_predictor():
     """Load the pre-trained general game model + its ratings table (both built by
@@ -538,6 +552,62 @@ elif page == "Backtest & Calibration":
         )
         st.altair_chart((diag + pts).properties(height=400), width="stretch")
         st.caption("Bubble size = number of games in that probability range.")
+
+        # ── Point-in-time vs. season-aggregate comparison ──────────────
+        pit = load_game_backtest_pit()
+        if pit["meta"] is not None:
+            pm = pit["meta"].iloc[0]
+            st.divider()
+            st.subheader("Point-in-time reality check")
+            st.markdown(
+                "The accuracy above uses **season-aggregate** ratings, which "
+                "already reflect each game's result. Below is the *same* "
+                "walk-forward backtest on the *same* well-covered games, but "
+                "comparing **point-in-time** ratings (as they stood the morning "
+                "of each game, from Barttorvik's time machine) against "
+                "season-aggregate ratings. The gap is the optimism."
+            )
+            gap = pm["acc_agg"] - pm["acc_pit"]
+            g1, g2, g3 = st.columns(3)
+            g1.metric("Point-in-time accuracy", fmt_pct(pm["acc_pit"]),
+                      help="Honest: ratings as they were before each game.")
+            g2.metric("Season-aggregate accuracy", fmt_pct(pm["acc_agg"]),
+                      help="Optimistic: end-of-season ratings.")
+            g3.metric("Optimism gap", f"{gap:+.1%}",
+                      delta=f"{gap:+.1%}", delta_color="inverse",
+                      help="How much season-aggregate ratings inflate accuracy.")
+            st.caption(
+                f"On {int(pm['n_games']):,} games, {int(pm['season_min'])}–"
+                f"{int(pm['season_max'])}. Brier {pm['brier_pit']:.3f} "
+                f"(point-in-time) vs {pm['brier_agg']:.3f} (season-aggregate)."
+            )
+
+            summ = pit["summary"]
+            by_year = summ.groupby("YEAR")[
+                ["correct_pit", "correct_agg", "n"]].sum()
+            by_year["Point-in-time"] = by_year["correct_pit"] / by_year["n"]
+            by_year["Season-aggregate"] = by_year["correct_agg"] / by_year["n"]
+            long = by_year.reset_index().melt(
+                id_vars="YEAR", value_vars=["Point-in-time", "Season-aggregate"],
+                var_name="Ratings", value_name="accuracy")
+            st.altair_chart(
+                alt.Chart(long).mark_line(point=True).encode(
+                    x=alt.X("YEAR:O", title="Season"),
+                    y=alt.Y("accuracy:Q", title="Accuracy",
+                            scale=alt.Scale(domain=[0.6, 0.85]),
+                            axis=alt.Axis(format="%")),
+                    color=alt.Color("Ratings:N", title=None,
+                                    scale=alt.Scale(
+                                        domain=["Point-in-time", "Season-aggregate"],
+                                        range=["#1f77b4", "#FF4B4B"])),
+                    tooltip=["YEAR", "Ratings",
+                             alt.Tooltip("accuracy:Q", format=".1%")],
+                ).properties(height=320), width="stretch")
+            st.caption(
+                "Season-aggregate (red) sits above point-in-time (blue) every "
+                "year — that vertical gap is the leakage from letting a game see "
+                "its team's final rating."
+            )
 
 
 # ──────────────────────────────────────────────────────────────

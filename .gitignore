@@ -16,6 +16,10 @@ model_3_0_output.txt
 # Large, reproducible game log (regenerate with: python fetch_data.py 2008 2026)
 data/games.csv
 
+# Point-in-time artifacts (regenerate with: python fetch_data.py --pit 2011 2026)
+data/games_pit.csv
+data/timemachine/
+
 # OS / editor
 .DS_Store
 Thumbs.db
