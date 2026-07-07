@@ -11,6 +11,7 @@ import streamlit as st
 import altair as alt
 
 import mm_model as mm
+import game_model as gm
 
 st.set_page_config(
     page_title="March Madness Predictor",
@@ -78,6 +79,16 @@ def eval_custom_metric_cached(clean_df, metric_cols, target_year, window_name):
         df_raw, clean_df, tuple(metric_cols), target_year, window_name)
 
 
+@st.cache_resource(show_spinner="Loading game model…")
+def load_game_predictor():
+    """Load the pre-trained general game model + its ratings table (both built by
+    fetch_data.py / game_model.py). Returns (artifact, ratings) or (None, None)."""
+    artifact = gm.load_model()
+    if artifact is None or not os.path.exists(gm.RATINGS_FILE):
+        return None, None
+    return artifact, gm.load_ratings()
+
+
 # ──────────────────────────────────────────────────────────────
 # HELPERS
 # ──────────────────────────────────────────────────────────────
@@ -107,8 +118,8 @@ st.sidebar.caption(
 
 page = st.sidebar.radio(
     "Navigate",
-    ["Overview", "Bracket Predictions", "Head-to-Head", "Model Accuracy",
-     "Betting Simulation", "Custom Metric", "Data Explorer"],
+    ["Overview", "Bracket Predictions", "Head-to-Head", "Game Predictor",
+     "Model Accuracy", "Betting Simulation", "Custom Metric", "Data Explorer"],
 )
 
 if results["meta"] is not None:
@@ -170,7 +181,9 @@ if page == "Overview":
     st.markdown(
         """
 - **Bracket Predictions** — the model's full predicted bracket (2026) and champion.
-- **Head-to-Head** — pick any two teams from a season and get a live prediction.
+- **Head-to-Head** — pick any two *tournament* teams and get a live prediction.
+- **Game Predictor** — predict *any* game (regular season or tournament) for any
+  two D1 teams, with home-court advantage.
 - **Model Accuracy** — walk-forward accuracy by training window and tournament round.
 - **Betting Simulation** — hypothetical P&L at various confidence thresholds.
 - **Custom Metric** — upload your own metric and see how much it helps the model.
@@ -303,6 +316,98 @@ elif page == "Head-to-Head":
                         tooltip=["Team", alt.Tooltip("Win probability:Q", format=".1%")],
                     ).properties(height=140),
                     width="stretch",
+                )
+
+
+# ──────────────────────────────────────────────────────────────
+# PAGE: GAME PREDICTOR  (any matchup, regular season or tournament)
+# ──────────────────────────────────────────────────────────────
+
+elif page == "Game Predictor":
+    st.title("Game Predictor")
+    st.markdown(
+        "Predict **any** college-basketball game — regular season or tournament. "
+        "Pick a season and two teams, choose who's at home, and the model gives "
+        "each side's win probability. It's trained on **every D1 game since 2008** "
+        "(~100k games) using Barttorvik efficiency ratings plus home court."
+    )
+
+    artifact, ratings = load_game_predictor()
+    if artifact is None:
+        st.warning(
+            "No trained game model found. Generate the data and model locally, "
+            "then redeploy:\n\n"
+            "```\npython fetch_data.py 2008 2026\npython game_model.py\n```"
+        )
+    else:
+        model = artifact["model"]
+        meta = artifact["meta"]
+        features = meta["features"]
+        seasons = sorted(ratings["YEAR"].unique(), reverse=True)
+
+        c1, c2 = st.columns([1, 2])
+        season = c1.selectbox("Season", seasons, index=0)
+        ryear = ratings[ratings["YEAR"] == season]
+        teams = sorted(ryear["TEAM"].unique())
+
+        c3, c4 = st.columns(2)
+        team_a = c3.selectbox("Team A", teams, index=0)
+        team_b = c4.selectbox("Team B", teams,
+                              index=1 if len(teams) > 1 else 0)
+
+        loc_label = st.radio(
+            "Where is it played?",
+            [f"🏠 {team_a} home", "⚖️ Neutral court", f"🏠 {team_b} home"],
+            index=1, horizontal=True,
+        )
+        location = ("A" if loc_label.endswith(f"{team_a} home")
+                    else "B" if loc_label.endswith(f"{team_b} home") else "N")
+
+        if team_a == team_b:
+            st.info("Pick two different teams.")
+        else:
+            probs = gm.win_probabilities(
+                team_a, team_b, location, ryear, model, features)
+            if probs is None:
+                st.warning("One of these teams has no ratings for this season.")
+            else:
+                p_a, p_b = probs
+                winner = team_a if p_a >= p_b else team_b
+                line = mm.prob_to_american_odds(max(p_a, p_b))
+
+                st.divider()
+                st.subheader(f"Prediction: **{winner}** wins")
+                cc1, cc2 = st.columns(2)
+                cc1.metric(team_a, fmt_pct(p_a),
+                           delta="WIN" if winner == team_a else None)
+                cc2.metric(team_b, fmt_pct(p_b),
+                           delta="WIN" if winner == team_b else None)
+
+                venue = ("neutral court" if location == "N"
+                         else f"{team_a if location == 'A' else team_b} at home")
+                st.caption(
+                    f"Implied moneyline on **{winner}**: `{line:+d}` · {venue} · "
+                    f"model CV accuracy {fmt_pct(meta['cv_accuracy'])} on "
+                    f"{meta['n_games']:,} games ({meta['year_min']}–{meta['year_max']})"
+                )
+
+                chart_df = pd.DataFrame(
+                    {"Team": [team_a, team_b], "Win probability": [p_a, p_b]})
+                st.altair_chart(
+                    alt.Chart(chart_df).mark_bar().encode(
+                        x=alt.X("Win probability:Q",
+                                scale=alt.Scale(domain=[0, 1]),
+                                axis=alt.Axis(format="%")),
+                        y=alt.Y("Team:N", sort="-x"),
+                        color=alt.Color("Team:N", legend=None),
+                        tooltip=["Team",
+                                 alt.Tooltip("Win probability:Q", format=".1%")],
+                    ).properties(height=140),
+                    width="stretch",
+                )
+                st.caption(
+                    "Flip the home/away toggle to see how much home court moves "
+                    "the line — it's worth roughly 3–4 points on a neutral game."
                 )
 
 

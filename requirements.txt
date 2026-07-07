@@ -1,5 +1,8 @@
 streamlit>=1.58
 pandas>=2.2
 numpy>=1.26
-scikit-learn>=1.4
+# Pinned to the minor the committed game_model.joblib was trained with, so a
+# newer scikit-learn can't silently break unpickling on redeploy.
+scikit-learn>=1.9,<1.10
+joblib>=1.4
 altair>=5.2

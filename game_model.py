@@ -10,12 +10,14 @@
 import os
 import warnings
 
+import joblib
 import numpy as np
 import pandas as pd
+import sklearn
 
 warnings.filterwarnings("ignore")
 
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -23,6 +25,7 @@ from sklearn.preprocessing import StandardScaler
 DATA_DIR = "data"
 RATINGS_FILE = os.path.join(DATA_DIR, "ratings.csv")
 GAMES_FILE = os.path.join(DATA_DIR, "games.csv")
+MODEL_FILE = os.path.join(DATA_DIR, "game_model.joblib")
 
 META_COLS = {"YEAR", "TEAM", "CONF"}
 HOME_COURT = "HOME_COURT"   # extra model feature, not a rating difference
@@ -81,18 +84,17 @@ def feature_columns(features):
 # MODEL TRAINING
 # ──────────────────────────────────────────────────────────────
 
-def build_pipeline(n_estimators=200, max_depth=None, random_state=0):
-    """StandardScaler + RandomForest. RF handles the ~35 correlated efficiency
-    diffs well and, unlike Bagging, exposes feature importances."""
+def build_pipeline(random_state=0):
+    """StandardScaler + HistGradientBoosting. On the ~100k-game log it matches
+    or beats a RandomForest on accuracy while pickling to <1 MB (a full RF is
+    tens of MB), which keeps the committed artifact small enough for GitHub."""
     return Pipeline([
         ("scaler", StandardScaler()),
-        ("clf", RandomForestClassifier(
-            n_estimators=n_estimators, max_depth=max_depth,
-            n_jobs=-1, random_state=random_state)),
+        ("clf", HistGradientBoostingClassifier(random_state=random_state)),
     ])
 
 
-def train_model(df_train, features, cv=3, do_cv=True, **pipe_kwargs):
+def train_model(df_train, features, cv=3, do_cv=True, random_state=0):
     """Fit the pipeline on a game-dataset frame. Returns (model, cv_accuracy).
 
     cv_accuracy is a mean k-fold accuracy for reporting (None if do_cv=False).
@@ -101,7 +103,7 @@ def train_model(df_train, features, cv=3, do_cv=True, **pipe_kwargs):
     X = df_train[cols].values
     y = df_train[TARGET].values
 
-    pipe = build_pipeline(**pipe_kwargs)
+    pipe = build_pipeline(random_state=random_state)
     cv_acc = None
     if do_cv:
         cv_acc = float(cross_val_score(pipe, X, y, cv=cv, n_jobs=-1).mean())
@@ -134,3 +136,72 @@ def predict_game(home_team, away_team, neutral, ratings_year, model, features):
     classes = list(model.classes_)
     idx = classes.index(1) if 1 in classes else len(classes) - 1
     return float(proba[idx])
+
+
+def win_probabilities(team_a, team_b, location, ratings_year, model, features):
+    """Convenience wrapper for the UI. ``location`` is 'A' (team A home), 'B'
+    (team B home) or 'N' (neutral). Returns (p_a, p_b) or None if unrated.
+
+    Orienting by the actual home team keeps HOME_COURT attached to the right
+    side; on a neutral court team A is oriented as home with HOME_COURT=0.
+    """
+    if location == "B":
+        p_home = predict_game(team_b, team_a, False, ratings_year, model, features)
+        p_a = None if p_home is None else 1.0 - p_home
+    else:
+        p_home = predict_game(team_a, team_b, location == "N",
+                              ratings_year, model, features)
+        p_a = p_home
+    if p_a is None:
+        return None
+    return p_a, 1.0 - p_a
+
+
+# ──────────────────────────────────────────────────────────────
+# PERSISTENCE  (train once locally, load on the app / cloud)
+# ──────────────────────────────────────────────────────────────
+
+def save_model(path=MODEL_FILE, cv=3):
+    """Train on the full game log and persist model + metadata with joblib.
+
+    Run locally (where data/games.csv exists) after fetch_data.py. The app loads
+    the artifact, so the cloud never needs games.csv or a live training pass.
+    """
+    ratings = load_ratings()
+    games = load_games()
+    features = get_features(ratings)
+    ds = build_game_dataset(games, ratings, features)
+
+    model, cv_acc = train_model(ds, features, cv=cv, do_cv=True)
+    years = sorted(ds["YEAR"].unique().tolist())
+    meta = {
+        "features": features,
+        "cv_accuracy": cv_acc,
+        "n_games": int(len(ds)),
+        "year_min": int(years[0]),
+        "year_max": int(years[-1]),
+        "home_win_base": float(ds[TARGET].mean()),
+        "sklearn_version": sklearn.__version__,
+    }
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    joblib.dump({"model": model, "meta": meta}, path, compress=3)
+    return meta
+
+
+def load_model(path=MODEL_FILE):
+    """Load the persisted {'model', 'meta'} artifact, or None if it's missing."""
+    if not os.path.exists(path):
+        return None
+    return joblib.load(path)
+
+
+if __name__ == "__main__":
+    print("Training game model on data/games.csv …", flush=True)
+    m = save_model()
+    print(f"Saved {MODEL_FILE}")
+    print(f"  {m['n_games']:,} games, {m['year_min']}–{m['year_max']}, "
+          f"{len(m['features'])} features")
+    print(f"  CV accuracy: {m['cv_accuracy']:.4f} "
+          f"(baseline home-win rate {m['home_win_base']:.4f})")
+    print(f"  sklearn {m['sklearn_version']}, "
+          f"file size {os.path.getsize(MODEL_FILE) / 1e6:.1f} MB")
