@@ -69,6 +69,15 @@ def train_model_cached(target_year, window_name):
     return model, model_name, cv, train_years
 
 
+@st.cache_data(show_spinner=False)
+def eval_custom_metric_cached(clean_df, metric_cols, target_year, window_name):
+    """Train with/without the uploaded metric and score it, cached per upload +
+    (year, window). Streamlit hashes the DataFrame, so re-uploading the same file
+    reuses the result."""
+    return mm.evaluate_custom_metric(
+        df_raw, clean_df, tuple(metric_cols), target_year, window_name)
+
+
 # ──────────────────────────────────────────────────────────────
 # HELPERS
 # ──────────────────────────────────────────────────────────────
@@ -99,7 +108,7 @@ st.sidebar.caption(
 page = st.sidebar.radio(
     "Navigate",
     ["Overview", "Bracket Predictions", "Head-to-Head", "Model Accuracy",
-     "Betting Simulation", "Data Explorer"],
+     "Betting Simulation", "Custom Metric", "Data Explorer"],
 )
 
 if results["meta"] is not None:
@@ -164,6 +173,7 @@ if page == "Overview":
 - **Head-to-Head** — pick any two teams from a season and get a live prediction.
 - **Model Accuracy** — walk-forward accuracy by training window and tournament round.
 - **Betting Simulation** — hypothetical P&L at various confidence thresholds.
+- **Custom Metric** — upload your own metric and see how much it helps the model.
 - **Data Explorer** — browse the underlying team-season stats.
         """
     )
@@ -445,6 +455,159 @@ elif page == "Betting Simulation":
             "Negative ROI across thresholds is expected: betting at fair implied "
             "odds with no sportsbook edge tends to lose to variance and vig."
         )
+
+
+# ──────────────────────────────────────────────────────────────
+# PAGE: CUSTOM METRIC
+# ──────────────────────────────────────────────────────────────
+
+elif page == "Custom Metric":
+    st.title("Test Your Own Metric")
+    st.markdown(
+        "Upload a metric of your own — coaching tenure, tournament history, "
+        "travel distance, anything numeric — and see **how much it helps the "
+        "model** predict real tournament games. The app trains the model twice "
+        "(with and without your metric) and ranks your metric against the ~95 "
+        "existing features by **permutation importance**."
+    )
+
+    st.subheader("1 · Get the format right")
+    st.markdown(
+        "Your CSV needs a **`YEAR`** column, a **`TEAM`** column, and one or more "
+        "**numeric** columns (your metrics). Team names must match the dataset "
+        "exactly — browse them on the **Data Explorer** page. Rows you don't "
+        "provide are filled neutrally, so partial coverage is fine."
+    )
+    template = (df_raw[["YEAR", "TEAM"]]
+                .drop_duplicates().sort_values(["YEAR", "TEAM"]))
+    template["my_metric"] = ""
+    st.download_button(
+        "⬇️ Download blank template (every YEAR, TEAM to fill in)",
+        template.to_csv(index=False).encode(),
+        "custom_metric_template.csv", "text/csv",
+    )
+
+    st.subheader("2 · Upload and evaluate")
+    upload = st.file_uploader("Upload your metric CSV", type=["csv"])
+
+    if upload is None:
+        st.info("Waiting for a CSV with YEAR, TEAM, and at least one numeric column.")
+    else:
+        try:
+            raw_up = pd.read_csv(upload)
+        except Exception as e:
+            st.error(f"Couldn't read that CSV: {e}")
+            raw_up = None
+
+        if raw_up is not None:
+            clean, metric_cols, err = mm.prepare_custom_metric(raw_up)
+            if err:
+                st.error(err)
+            else:
+                cov = mm.custom_metric_coverage(df_raw, clean)
+                st.success(f"Detected metric column(s): **{', '.join(metric_cols)}**")
+
+                c1, c2 = st.columns(2)
+                c1.metric("Team-seasons covered", f"{cov['coverage']:.0%}",
+                          help=f"{cov['n_matched']:,} of {cov['n_base']:,} "
+                               "tournament team-seasons matched your upload.")
+                c2.metric("Upload rows that matched nothing",
+                          f"{len(cov['unmatched_upload']):,}")
+
+                if cov["unmatched_upload"]:
+                    with st.expander("Rows that didn't match a team-season "
+                                     "(check YEAR + spelling)"):
+                        st.dataframe(
+                            pd.DataFrame(cov["unmatched_upload"],
+                                         columns=["YEAR", "TEAM"]),
+                            hide_index=True, width="stretch", height=240,
+                        )
+
+                if cov["coverage"] == 0:
+                    st.warning(
+                        "No rows matched. Team names must match the dataset "
+                        "exactly — compare against the Data Explorer page."
+                    )
+                else:
+                    cc1, cc2 = st.columns(2)
+                    sel_year = cc1.selectbox(
+                        "Evaluate on season", completed_years[::-1], index=0,
+                        help="Only completed tournaments can be scored.")
+                    sel_window = cc2.selectbox(
+                        "Training window", list(mm.TRAINING_WINDOWS.keys()),
+                        index=0, help="Which prior seasons the model learns from.")
+
+                    if st.button("Run model with my metric", type="primary"):
+                        with st.spinner("Training with and without your metric… "
+                                        "(first run per selection)"):
+                            res = eval_custom_metric_cached(
+                                clean, metric_cols, sel_year, sel_window)
+
+                        if res.get("error"):
+                            st.error(res["error"])
+                        else:
+                            st.divider()
+                            st.subheader("Does your metric improve accuracy?")
+                            d = res["acc_delta"]
+                            m1, m2, m3 = st.columns(3)
+                            m1.metric("With your metric", fmt_pct(res["acc_with"]))
+                            m2.metric("Baseline (without)", fmt_pct(res["acc_without"]))
+                            m3.metric("Change", f"{d:+.1%}",
+                                      delta=f"{d:+.1%}",
+                                      delta_color="normal" if d != 0 else "off")
+                            st.caption(
+                                f"Scored on **{res['n_test_games']} actual "
+                                f"{sel_year} games** · trained on "
+                                f"{res['train_years'][0]}–{res['train_years'][-1]} · "
+                                f"model with metric: {res['model_with']}"
+                            )
+                            if d > 0:
+                                st.success("Your metric improved accuracy on this "
+                                           "season. 🎯")
+                            elif d < 0:
+                                st.info("Your metric lowered accuracy on this "
+                                        "season — it may add noise here.")
+                            else:
+                                st.info("No change in accuracy on this season.")
+
+                            st.subheader("How important is your metric?")
+                            imp = res["importance"]
+                            ranks = imp[imp["is_custom"]][
+                                ["feature", "rank", "importance"]]
+                            for _, r in ranks.iterrows():
+                                st.markdown(
+                                    f"- **{r['feature']}** ranks "
+                                    f"**#{int(r['rank'])} of {res['n_features']}** "
+                                    f"features (permutation importance "
+                                    f"{r['importance']:+.4f})."
+                                )
+
+                            top = imp.head(20).copy()
+                            top["kind"] = np.where(top["is_custom"],
+                                                   "Your metric", "Existing feature")
+                            st.altair_chart(
+                                alt.Chart(top).mark_bar().encode(
+                                    x=alt.X("importance:Q",
+                                            title="Permutation importance "
+                                                  "(accuracy drop when shuffled)"),
+                                    y=alt.Y("feature:N", sort="-x", title=None),
+                                    color=alt.Color(
+                                        "kind:N", title=None,
+                                        scale=alt.Scale(
+                                            domain=["Your metric", "Existing feature"],
+                                            range=["#FF4B4B", "#9aa0a6"])),
+                                    tooltip=["feature",
+                                             alt.Tooltip("importance:Q", format="+.4f"),
+                                             "rank"],
+                                ).properties(height=460),
+                                width="stretch",
+                            )
+                            st.caption(
+                                "Permutation importance measures how much test "
+                                "accuracy drops when a feature's values are randomly "
+                                "shuffled — higher means the model relies on it more. "
+                                "Top 20 features shown."
+                            )
 
 
 # ──────────────────────────────────────────────────────────────

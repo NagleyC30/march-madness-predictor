@@ -15,6 +15,8 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 from sklearn.model_selection import GridSearchCV
+from sklearn.inspection import permutation_importance
+from sklearn.metrics import accuracy_score
 
 DATA_FILE = 'KenPom Barttorvik.csv'
 
@@ -507,3 +509,157 @@ BETTING_THRESHOLDS = (-200, -250, -300, -350)
 def get_train_years_for_window(all_years, target_year, window_size):
     prior = [y for y in all_years if y < target_year]
     return prior if window_size is None else prior[-window_size:]
+
+
+# ──────────────────────────────────────────────────────────────
+# CUSTOM USER METRICS
+# ──────────────────────────────────────────────────────────────
+#
+# Lets an app user upload their own metric (e.g. coaching tenure, tournament
+# history) keyed by (YEAR, TEAM), then measures how much it helps the model:
+# permutation importance ranked against the existing features, plus an accuracy
+# delta from training with vs. without the metric on one target season.
+
+def prepare_custom_metric(custom_df):
+    """Normalize an uploaded metric table to canonical (YEAR, TEAM, <numeric…>).
+
+    Returns (clean_df, metric_cols, error). ``error`` is None on success.
+    Key columns are matched case-insensitively; every other column that parses
+    as numeric is treated as a metric. Duplicate (YEAR, TEAM) rows are averaged.
+    """
+    df = custom_df.copy()
+    lookup = {str(c).lower().strip(): c for c in df.columns}
+    if 'year' not in lookup or 'team' not in lookup:
+        return None, [], "Upload must contain 'YEAR' and 'TEAM' columns."
+
+    df = df.rename(columns={lookup['year']: 'YEAR', lookup['team']: 'TEAM'})
+    df['YEAR'] = pd.to_numeric(df['YEAR'], errors='coerce')
+    df = df.dropna(subset=['YEAR', 'TEAM'])
+    if df.empty:
+        return None, [], "No rows with a valid YEAR and TEAM were found."
+    df['YEAR'] = df['YEAR'].astype(int)
+    df['TEAM'] = df['TEAM'].astype(str).str.strip()
+
+    metric_cols = []
+    for c in list(df.columns):
+        if c in ('YEAR', 'TEAM'):
+            continue
+        coerced = pd.to_numeric(df[c], errors='coerce')
+        if coerced.notna().any():
+            df[c] = coerced
+            metric_cols.append(c)
+
+    if not metric_cols:
+        return None, [], "No numeric metric columns found besides YEAR/TEAM."
+
+    df = (df[['YEAR', 'TEAM'] + metric_cols]
+          .groupby(['YEAR', 'TEAM'], as_index=False).mean())
+    return df, metric_cols, None
+
+
+def custom_metric_coverage(df_stats, clean_df):
+    """How well the upload's (YEAR, TEAM) keys cover the tournament team-seasons.
+
+    Returns a dict with the base count, matched count, coverage fraction, and the
+    upload keys that matched nothing (usually team-name spelling mismatches).
+    """
+    base_keys = set(map(tuple, df_stats[['YEAR', 'TEAM']].itertuples(index=False)))
+    up_keys   = set(map(tuple, clean_df[['YEAR', 'TEAM']].itertuples(index=False)))
+    matched   = base_keys & up_keys
+    return {
+        'n_base':           len(base_keys),
+        'n_matched':        len(matched),
+        'coverage':         len(matched) / len(base_keys) if base_keys else 0.0,
+        'unmatched_upload': sorted(up_keys - base_keys),
+    }
+
+
+def augment_with_custom(df_stats, clean_df, metric_cols):
+    """Left-join the custom metric columns onto the stats table.
+
+    Uncovered team-seasons are filled with the per-column mean so that a matchup
+    where the metric is missing contributes ~0 to the feature difference (the
+    'neutral fill' policy) instead of being dropped.
+    """
+    merged = df_stats.merge(clean_df, on=['YEAR', 'TEAM'], how='left')
+    for c in metric_cols:
+        col_mean = merged[c].mean()
+        merged[c] = merged[c].fillna(0.0 if pd.isna(col_mean) else col_mean)
+    return merged
+
+
+def evaluate_custom_metric(df_stats, clean_df, metric_cols, target_year, window_name):
+    """Train the best model with and without the uploaded metric(s) for one
+    target season + training window, and compute permutation importance on that
+    season's actual games.
+
+    Returns a results dict (or ``{'error': …}`` when the selection can't be run).
+    """
+    metric_cols = list(metric_cols)
+
+    # Guard against a metric column that collides with an existing feature.
+    existing = set(df_stats.columns)
+    renames  = {c: f'{c} (user)' for c in metric_cols if c in existing}
+    if renames:
+        clean_df = clean_df.rename(columns=renames)
+        metric_cols = [renames.get(c, c) for c in metric_cols]
+
+    base_features = get_features(df_stats)
+    merged        = augment_with_custom(df_stats, clean_df, metric_cols)
+    aug_features  = base_features + [c for c in metric_cols if c not in base_features]
+
+    rows, years = build_all_matchups(merged)
+    if target_year not in years:
+        return {'error': f'{target_year} has no completed results to score against.'}
+
+    window_size = TRAINING_WINDOWS[window_name]
+    train_years = get_train_years_for_window(years, target_year, window_size)
+    if not train_years:
+        return {'error': f'No prior seasons before {target_year} for this window.'}
+
+    train_rows = [r for r in rows if r['YEAR'] in train_years]
+    test_rows  = [r for r in rows if r['YEAR'] == target_year]
+
+    df_train_aug  = build_model_dataset(train_rows, merged, aug_features)
+    df_test_aug   = build_model_dataset(test_rows,  merged, aug_features)
+    df_train_base = build_model_dataset(train_rows, merged, base_features)
+    df_test_base  = build_model_dataset(test_rows,  merged, base_features)
+
+    if df_test_aug.empty or df_train_aug.empty:
+        return {'error': f'Not enough matchup data for {target_year} with this window.'}
+
+    model_aug,  name_aug,  cv_aug  = train_best_model(df_train_aug,  aug_features)
+    model_base, name_base, cv_base = train_best_model(df_train_base, base_features)
+
+    diffs_aug  = [f'{c}_DIFF' for c in aug_features]
+    diffs_base = [f'{c}_DIFF' for c in base_features]
+    X_aug,  y_aug  = df_test_aug[diffs_aug].values,   df_test_aug['HIGH_SEED_WINS'].values
+    X_base, y_base = df_test_base[diffs_base].values, df_test_base['HIGH_SEED_WINS'].values
+
+    acc_aug  = accuracy_score(y_aug,  model_aug.predict(X_aug))
+    acc_base = accuracy_score(y_base, model_base.predict(X_base))
+
+    perm = permutation_importance(
+        model_aug, X_aug, y_aug,
+        n_repeats=15, random_state=0, scoring='accuracy')
+    importance = pd.DataFrame({
+        'feature':    aug_features,
+        'importance': perm.importances_mean,
+        'std':        perm.importances_std,
+        'is_custom':  [c in metric_cols for c in aug_features],
+    }).sort_values('importance', ascending=False).reset_index(drop=True)
+    importance['rank'] = importance.index + 1
+
+    return {
+        'metric_cols':   metric_cols,
+        'train_years':   train_years,
+        'target_year':   target_year,
+        'n_test_games':  int(len(y_aug)),
+        'n_features':    len(aug_features),
+        'acc_with':      float(acc_aug),
+        'acc_without':   float(acc_base),
+        'acc_delta':     float(acc_aug - acc_base),
+        'model_with':    name_aug,  'cv_with':    float(cv_aug),
+        'model_without': name_base, 'cv_without': float(cv_base),
+        'importance':    importance,
+    }

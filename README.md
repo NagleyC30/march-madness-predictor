@@ -16,6 +16,9 @@ trains on seasons that happened *before* it — no looking into the future. Acro
 - **Model Accuracy** — walk-forward accuracy by training window, year, and round.
 - **Betting Simulation** — hypothetical P&L at several confidence thresholds
   (educational; model-implied odds, not real sportsbook lines).
+- **Custom Metric** — upload your own metric (`YEAR, TEAM, <numeric columns>`) and
+  the app retrains with and without it, reporting the accuracy change and the
+  metric's **permutation importance** ranked against the built-in features.
 - **Data Explorer** — browse the underlying team-season ratings.
 
 ## 🗂️ Project layout
@@ -30,8 +33,8 @@ trains on seasons that happened *before* it — no looking into the future. Acro
 | `requirements.txt` | Python dependencies for Streamlit Community Cloud. |
 
 The dashboards read precomputed CSVs so the app loads instantly on Streamlit
-Cloud's limited resources. Only the **Head-to-Head** predictor trains a model
-live (cached per season + window).
+Cloud's limited resources. The **Head-to-Head** predictor and **Custom Metric**
+page train a model live (cached per selection).
 
 ## 🚀 Run locally
 
