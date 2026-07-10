@@ -308,7 +308,17 @@ when I make mine. -- **TODO / partially data-blocked**
 15\. **"How the models work" learning page.** Explain each classifier —
 RandomForest, Bagging, XGBoost, etc. — what it's doing and why. Assess turning
 the predictor into a **neural network**: how, and what constraints block it. --
-**TODO (best done alongside Phase 2 so it documents real models)**
+**DONE (2026-07-10)**
+- Built the **"How the Models Work"** page: how the model sees a game (feature
+  diffs → `HIGH_SEED_WINS`), a **live feature-importance chart** and a **real
+  depth-3 decision tree** (`model_explain.py`, precomputed to
+  `data/model_explain_{importance.csv,tree.txt}` so the page loads instantly —
+  live compute was ~26s), plain-English expanders for Bagging/RF, boosting,
+  LogReg, SVM, MLP, and a "Could this be a neural network?" section that ties the
+  MLP's bake-off overfitting to the data-size limit + the ~103k regular-season
+  follow-up. No matplotlib (tree via `export_text`, not `plot_tree`). Explainers
+  reference the **Model Bake-off** numbers instead of duplicating them, so the two
+  pages compose. TODO when re-run: `python model_explain.py` after data changes.
 - **Feasibility: easy for the explainers, nuanced for the NN.**
 - **Explainer content** can be live, not just prose: feature-importance bars from
   the trained model, a single rendered decision tree, bagging/boosting
@@ -367,6 +377,8 @@ exist. Start the gf's **logo** now regardless (external lead time).
    - **Sub-step c — bracket-pool points per model: DONE (2026-07-10).** Random
      Forest is the only model that beats a chalk bracket; MLP is worst.
 3. **Learning page (item 15)** — write it against the models that now exist.
+   -- **DONE (2026-07-10).** "How the Models Work" page; explainers reference the
+   bake-off numbers.
 4. **Me-vs-Machine contest (item 14)** — build once on calibrated probs. Ship
    manual-entry mode first; wire the schedule feed when `2027_super_sked.csv`
    lands (~Nov 2026).

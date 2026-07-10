@@ -13,6 +13,7 @@ import altair as alt
 import mm_model as mm
 import game_model as gm
 import betting_strategies as bs
+import model_explain as me
 
 st.set_page_config(
     page_title="March Madness Predictor",
@@ -75,6 +76,13 @@ def load_strategy_lab():
         cal_summary, _ = bs.run_all(bs.load_games(cal_path))
         out["cal_summary"] = cal_summary
     return out
+
+
+@st.cache_data
+def load_explainers():
+    """Teaching artifacts for the 'How the Models Work' page — precomputed to disk
+    by `python model_explain.py` (instant), or computed live as a fallback."""
+    return me.load_artifacts()
 
 
 @st.cache_data
@@ -192,7 +200,8 @@ page = st.sidebar.radio(
     "Navigate",
     ["Overview", "Bracket Predictions", "Head-to-Head", "Game Predictor",
      "Backtest & Calibration", "Model Accuracy", "Model Bake-off",
-     "Betting Simulation", "Custom Metric", "Data Explorer"],
+     "How the Models Work", "Betting Simulation", "Custom Metric",
+     "Data Explorer"],
 )
 
 if results["meta"] is not None:
@@ -967,7 +976,7 @@ elif page == "Model Bake-off":
                 rule = alt.Chart(pd.DataFrame({"x": [chalk_total]})).mark_rule(
                     strokeDash=[4, 4], color="gray").encode(x="x:Q")
             st.altair_chart((bar + rule) if rule is not None else bar,
-                            use_container_width=True)
+                            width="stretch")
 
             round_cols = ["R64", "R32", "S16", "E8", "F4", "Championship"]
             pd_disp = pool[["model", "total", "avg_per_year", "pct_of_max"] + round_cols].rename(
@@ -988,6 +997,148 @@ elif page == "Model Bake-off":
                 "which essentially never holds by the final — so deep-round credit is "
                 "rare, but the comparison is apples-to-apples across models."
             )
+
+
+# ──────────────────────────────────────────────────────────────
+# PAGE: HOW THE MODELS WORK
+# ──────────────────────────────────────────────────────────────
+
+elif page == "How the Models Work":
+    st.title("How the Models Work")
+    st.markdown(
+        "A plain-English tour of the classifiers behind the predictions — what "
+        "each one actually *does*, why we use several, and whether a neural "
+        "network would help. The numbers that rank these models live on the "
+        "**Model Bake-off** page; this page explains the machinery."
+    )
+
+    st.header("How the model sees a game")
+    st.markdown(
+        "Every game is reduced to one row of **differences**. For each of the 34 "
+        "KenPom/Barttorvik ratings we subtract the lower seed's value from the "
+        "higher seed's, and the model learns to predict **`HIGH_SEED_WINS`** (1 if "
+        "the better seed wins). So a *positive* number always means \"the "
+        "favorite has more of this stat.\" The model never sees team names — only "
+        "these rating gaps, which is what lets it generalize to matchups it has "
+        "never seen."
+    )
+
+    expl = load_explainers()
+
+    st.header("What the model actually looks at")
+    st.markdown(
+        "Impurity-based feature importance from a Random Forest trained on every "
+        "historical tournament game — how often each rating gap is the thing that "
+        "decides a split. The efficiency margins dominate; team names, seeds and "
+        "conference never enter."
+    )
+    imp = expl["importance"].copy()
+    chart = alt.Chart(imp).mark_bar(color="#1f77b4").encode(
+        x=alt.X("importance:Q", title="Importance"),
+        y=alt.Y("feature:N", sort="-x", title=None),
+        tooltip=["feature", alt.Tooltip("importance:Q", format=".3f")],
+    )
+    st.altair_chart(chart.properties(height=420), width="stretch")
+    st.caption(
+        "**BADJ EM / KADJ EM** are Barttorvik's and KenPom's adjusted efficiency "
+        "margins (points per 100 possessions vs. an average team); **WAB** is "
+        "\"wins above bubble\"; **BARTHAG** is a power rating. In short: the model "
+        "leans on how much better one team is at scoring and preventing scoring."
+    )
+
+    st.header("A single decision tree")
+    st.markdown(
+        "The simplest building block. A tree asks yes/no questions about the "
+        "rating gaps, funneling each game down to a prediction. Here's a **real** "
+        "depth-3 tree trained on the data (shortened for readability) — read "
+        "`BADJ EM <= 11.50` as \"is the favorite's efficiency-margin edge 11.5 or "
+        "less?\":"
+    )
+    st.code(expl["tree"], language="text")
+    st.markdown(
+        "One tree is easy to read but **brittle** — nudge the data and the splits "
+        "jump around (high variance). Every model below is a strategy for taming "
+        "that brittleness."
+    )
+
+    st.header("The roster, in plain English")
+    with st.expander("🌲 Bagging & Random Forest — averaging many trees", expanded=True):
+        st.markdown(
+            "**Bagging** trains many trees, each on a random resample of the games, "
+            "and averages their votes. Averaging cancels the individual trees' "
+            "random errors, so the ensemble is far steadier than any one tree. "
+            "**Random Forest** adds one twist: at each split a tree may only "
+            "consider a random subset of the features, which *decorrelates* the "
+            "trees so the averaging helps even more.\n\n"
+            "Because the prediction is a **vote share** across hundreds of trees, "
+            "Random Forest's probabilities come out naturally well-behaved — which "
+            "is exactly why it was the best-**calibrated** and best **bracket-pool** "
+            "model in the bake-off."
+        )
+    with st.expander("🚀 Boosting — HistGradientBoosting / XGBoost"):
+        st.markdown(
+            "Boosting builds trees **in sequence**, each one focused on the games "
+            "the previous trees got wrong. This chases accuracy aggressively and "
+            "often ranks games very well — but it also tends to become "
+            "**overconfident**, pushing probabilities toward 0 or 1. In the "
+            "bake-off, raw HistGradientBoosting was badly miscalibrated until "
+            "isotonic calibration reined it in. **XGBoost/LightGBM** are faster, "
+            "regularized cousins of the same idea; we've left them out for now to "
+            "avoid an extra deploy dependency, since HistGradientBoosting already "
+            "represents the family."
+        )
+    with st.expander("📈 Logistic Regression — the calibrated baseline"):
+        st.markdown(
+            "A straight-line model: it weights each rating gap and squashes the sum "
+            "into a probability. It can't capture interactions the way trees do, so "
+            "its accuracy is a touch lower — but its probabilities are honest by "
+            "construction, which makes it a valuable sanity-check baseline."
+        )
+    with st.expander("🧭 SVM — drawing the widest boundary"):
+        st.markdown(
+            "A Support Vector Machine finds the boundary that separates "
+            "favorite-wins from upset games with the **widest possible margin**, "
+            "and (with an RBF kernel) can bend that boundary into curves. Solid "
+            "accuracy, but its raw scores aren't true probabilities without extra "
+            "calibration."
+        )
+    with st.expander("🧠 MLP — a (small) neural network"):
+        st.markdown(
+            "A multi-layer perceptron stacks layers of weighted sums and "
+            "non-linearities, learning its own feature combinations instead of "
+            "being handed them. In principle the most flexible model here — in "
+            "practice, on the bake-off it was the **worst**: badly overconfident "
+            "and the weakest bracket-filler. See the next section for why, and "
+            "whether it's worth pursuing."
+        )
+
+    st.header("Could this be a neural network?")
+    st.markdown(
+        "Yes — and it already partly is (the **MLP** above is a small neural net, "
+        "and it needs no extra dependency). The real question is whether a "
+        "*bigger, deeper* net would help. On this data, probably not yet:"
+    )
+    st.markdown(
+        "- **The blocker is data size, not tooling.** The tournament model trains "
+        "on only ~1,000 games with 34 features. Deep nets are hungry; on small, "
+        "tabular data they **overfit** — exactly what we saw (the MLP's log-loss "
+        "blew up to 1.69). Gradient-boosted trees usually *beat* neural nets in "
+        "this regime.\n"
+        "- **The real unlock is more data.** There are **~103,000 regular-season "
+        "games** the tournament model currently ignores. Training on those is the "
+        "structural fix for overfitting **and** the genuine prerequisite for a "
+        "deep network — it's logged as the next big modelling item.\n"
+        "- **Calibration still applies.** Neural nets are miscalibrated out of the "
+        "box too, so they'd need the same isotonic/Platt step the trees got.\n"
+        "- **Deploy cost.** A real deep net means PyTorch/Keras — heavy for this "
+        "Streamlit app — whereas the MLP rides along inside scikit-learn for free."
+    )
+    st.info(
+        "**Bottom line.** More flexible ≠ better on a small dataset. Random Forest "
+        "quietly wins here because averaging keeps it honest. A deep neural net "
+        "becomes worth trying **after** we train on the full regular-season "
+        "history — see the **Model Bake-off** page for the head-to-head numbers."
+    )
 
 
 # ──────────────────────────────────────────────────────────────
