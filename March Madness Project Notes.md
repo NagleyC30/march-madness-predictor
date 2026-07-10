@@ -158,13 +158,33 @@ Surface a model-comparison view in the app.
     bagging averages its trees' votes. Nuance: isotonic *slightly hurts* RF
     (0.192→0.196) — calibration isn't free on an already-calibrated model with
     limited data.
-- **Still TODO in Phase 2 (next sub-steps):**
-  - **Feed calibrated probs back into the betting backtest** — the payoff
-    question: do the +EV edges (item 7) survive once the model is calibrated?
-    (Requires re-emitting `bet_games.csv`-style probs per model/variant.)
-  - **Bracket-pool points** (10/20/40/80/160/320-by-round) per model.
+- **Sub-step b — do the +EV edges survive calibration? — DONE (2026-07-10).**
+  `backtest_calibrated.py` re-settles the *same* walk-forward bets at the *same*
+  real closing lines, but wraps the trained model in **isotonic calibration**
+  (fit on training seasons only) → `data/bet_games_calibrated.csv` (same schema
+  as `bet_games.csv`, so the strategy lab runs on it unchanged). New **"Does the
+  edge survive calibration?"** table on the Betting Simulation page puts raw vs
+  calibrated ROI/edge side by side per strategy.
+- **Finding — nuanced, and *stronger* than "the edge was fake":**
+  - The +EV profit **does NOT collapse.** On `all_prior`, Value-flat even nudges
+    up (+4.2→+5.2%), underdogs improve (+7.2→+10.4%); only edge≥3% craters
+    (+11.8→+3.5%). On `last_3` several strategies flip from negative to slightly
+    positive. So the longer-window edge is **partly robust** to calibration.
+  - **¼-Kelly improves on every window** (all_prior −8.7→−4.1, last_3 −13.9→−6.2,
+    last_1 −19.0→−8.6) — calibration curbs the overconfident sizing that cratered
+    the bankroll, exactly as theory predicts (though Kelly still loses).
+  - **The claimed edge % barely moves** — because the backtest's chosen model is
+    the RF/Bagging the bake-off already found *well-calibrated*. The dramatic
+    overconfidence lived in the models the backtest doesn't use (MLP, raw
+    boosting). Consistent story across both sub-steps.
+- **Still TODO in Phase 2:**
+  - **Sub-step c — bracket-pool points** (10/20/40/80/160/320-by-round) per model.
   - Optional: run the bake-off across all five windows (currently `all_prior`
     only); consider XGBoost/LightGBM iff a real gain justifies the dep.
+  - **New follow-up (from the overfitting review):** train the classifier on the
+    ~103k regular-season games in `data/games.csv` (the tournament model only sees
+    ~1k tournament games) — the structural fix for overfitting and the real
+    prerequisite for a genuine deep neural net. Log as a post-Phase-2 item.
 
 ---
 
@@ -328,9 +348,10 @@ exist. Start the gf's **logo** now regardless (external lead time).
    downstream number, so it comes before the new display pages. *In parallel:
    email gf the logo spec (item 16).*
    - **Sub-step a — bake-off + calibration metrics + app page: DONE (2026-07-10).**
-   - **Sub-step b — calibrated probs → betting backtest (do next):** the payoff
-     test of whether the +EV edges survive calibration.
-   - **Sub-step c — bracket-pool points per model.**
+   - **Sub-step b — calibrated probs → betting backtest: DONE (2026-07-10).**
+     Edges partly survive; ¼-Kelly improves everywhere; claimed edge unmoved
+     because the backtest model was already well-calibrated.
+   - **Sub-step c — bracket-pool points per model (do next).**
 3. **Learning page (item 15)** — write it against the models that now exist.
 4. **Me-vs-Machine contest (item 14)** — build once on calibrated probs. Ship
    manual-entry mode first; wire the schedule feed when `2027_super_sked.csv`

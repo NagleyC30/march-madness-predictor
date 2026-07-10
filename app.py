@@ -66,7 +66,15 @@ def load_strategy_lab():
     summary, equity = bs.run_all(games)
     slices = pd.concat([bs.run_slices(games, "round"),
                         bs.run_slices(games, "seed")], ignore_index=True)
-    return {"games": games, "summary": summary, "equity": equity, "slices": slices}
+    out = {"games": games, "summary": summary, "equity": equity, "slices": slices}
+
+    # Calibrated twin (backtest_calibrated.py): same bets, isotonic-calibrated
+    # probabilities. Lets the lab put raw vs calibrated ROI side by side.
+    cal_path = os.path.join(DATA_DIR, "bet_games_calibrated.csv")
+    if os.path.exists(cal_path):
+        cal_summary, _ = bs.run_all(bs.load_games(cal_path))
+        out["cal_summary"] = cal_summary
+    return out
 
 
 @st.cache_data
@@ -1181,6 +1189,47 @@ elif page == "Betting Simulation":
                 "concentrates in the **first round** and on **double-digit-seed "
                 "underdogs**, and evaporates on the favorites — consistent with "
                 "the model being overconfident on chalk."
+            )
+
+        # ── Does the edge survive calibration? (raw vs calibrated probs) ──
+        cal_summary = lab.get("cal_summary")
+        if cal_summary is not None:
+            st.subheader("Does the edge survive calibration?")
+            st.markdown(
+                "The Bake-off showed the model is **overconfident** — so some of "
+                "the +EV \"edge\" above may just be the model overstating its win "
+                "probabilities, not a real market inefficiency. Here the **same "
+                "bets at the same closing lines** are re-settled with the model's "
+                "probabilities **isotonic-calibrated** (fit on the training "
+                "seasons only). If the profit shrinks toward zero, the edge was "
+                "mostly overconfidence."
+            )
+            raw_w = lab["summary"][lab["summary"]["window"] == lab_window]
+            cal_w = cal_summary[cal_summary["window"] == lab_window]
+            comp = raw_w[["strategy", "roi_pct", "avg_edge_pct"]].merge(
+                cal_w[["strategy", "roi_pct", "avg_edge_pct"]],
+                on="strategy", suffixes=(" raw", " calib"))
+            comp["ROI Δ"] = (comp["roi_pct calib"] - comp["roi_pct raw"]).round(1)
+            comp = comp.rename(columns={
+                "strategy": "Strategy", "roi_pct raw": "ROI % (raw)",
+                "roi_pct calib": "ROI % (calib)", "avg_edge_pct raw": "Edge % (raw)",
+                "avg_edge_pct calib": "Edge % (calib)"})
+            comp = comp[["Strategy", "ROI % (raw)", "ROI % (calib)", "ROI Δ",
+                         "Edge % (raw)", "Edge % (calib)"]]
+            st.dataframe(
+                comp.style.format({"ROI % (raw)": "{:+.1f}", "ROI % (calib)": "{:+.1f}",
+                                   "ROI Δ": "{:+.1f}", "Edge % (raw)": "{:+.1f}",
+                                   "Edge % (calib)": "{:+.1f}"})
+                .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
+                     else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+                     subset=["ROI % (raw)", "ROI % (calib)"]),
+                hide_index=True, width="stretch",
+            )
+            st.caption(
+                "**Avg edge %** is how much the model's probability exceeds the "
+                "de-vigged market price — calibration should shrink the *claimed* "
+                "edge toward what's real. Watch whether the +EV strategies' ROI "
+                "collapses once that happens."
             )
 
 
