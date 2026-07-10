@@ -83,7 +83,7 @@ architecture — lead the navigation / Overview with the betting analysis, frame
 the whole project around "can the model beat the market," and consolidate the
 betting views into one strong dashboard instead of a single buried page.
 
-7\. **Build a strategy lab — try many betting strategies, compared side by side.**
+7\. **Build a strategy lab — try many betting strategies, compared side by side.** -- **DONE (first pass)**
 On top of the three current settlements (moneyline, flip-to-spread,
 model-implied), add:
 - **Value / +EV betting**: bet only where the model's win probability beats the
@@ -94,6 +94,23 @@ model-implied), add:
 - **Selection variants**: underdog-only, by-seed, by-round, favorites-only.
 - Compare all strategies on one dashboard: ROI, win rate, **max drawdown**,
   bankroll **equity curve** over time.
+
+- Built: `backtest_odds.py` now emits `data/bet_games.csv` (one settled
+  game-prediction per row: model prob + real closing moneylines both sides +
+  result). `betting_strategies.py` post-processes it into strategies (fast, no
+  retraining; the app computes them live). Strategy-lab section on the **Betting
+  Simulation** page: comparison table (bets, win%, ROI%, avg edge%, end bankroll,
+  max drawdown) + bankroll-over-time chart, per training window.
+- **Result — nuanced, and a great Phase-2 hook.** Flat +EV betting turns a
+  *profit* on the longer windows (all_prior +4.2%, edge≥3% +11.8%, underdogs
+  +7.2%) — the opposite of the chalk result. **But it's fragile**, not a proven
+  edge: it's negative on the short windows (last_1/last_3), and on all_prior only
+  5/12 tournaments win (2012 & 2018 carry it). The model is **overconfident** on
+  favorites (rates games 84%/94% that it wins 78%/88%), so much of its "edge" is
+  illusory. Decisive tell: **¼-Kelly loses on every window and craters the
+  bankroll ($1000→$254, -89% drawdown)** — if the edges were real, Kelly would
+  compound them. → strong motivation for Phase 2 (calibrate the model, then see
+  if the +EV edges survive). Backlog to still add: by-seed/by-round slices.
 
 ---
 

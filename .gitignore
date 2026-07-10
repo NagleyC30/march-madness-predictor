@@ -25,6 +25,11 @@ data/timemachine/
 # if the upstream archive disappears.
 data/odds_cache/
 
+# Strategy-lab derivatives — the app computes these live from data/bet_games.csv,
+# so only bet_games.csv is committed (regenerate all with: python betting_strategies.py).
+data/betting_strategies_summary.csv
+data/betting_strategies_equity.csv
+
 # OS / editor
 .DS_Store
 Thumbs.db

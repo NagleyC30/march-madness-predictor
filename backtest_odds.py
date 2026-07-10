@@ -29,6 +29,9 @@
 #   data/betting_simulation_real.csv       moneyline strategy, per window/year/threshold
 #   data/betting_simulation_spreadflip.csv  flip strategy, same shape + spread cols
 #   data/betting_real_meta.csv             headline coverage + which years are in.
+#   data/bet_games.csv                     one row per settleable game-prediction
+#                                          (model prob + real odds + result) — the
+#                                          base table the strategy lab post-processes.
 #
 # Usage:  python backtest_odds.py
 
@@ -80,43 +83,53 @@ def load_odds_lookup():
 
 
 def real_game(lookup, year, team_high, team_low, pick):
-    """Return (moneyline, spread, margin) for `pick` in the real game, any of
-    which may be None. margin = pick_score - opponent_score."""
+    """Return (ml_pick, ml_opp, spread_pick, margin) for the real game, any of
+    which may be None. margin = pick_score - opponent_score. ml_opp lets callers
+    de-vig the market's implied probability."""
     kh, kl = fo.team_key(team_high), fo.team_key(team_low)
     game = lookup.get((year, frozenset((kh, kl))))
     if game is None:
-        return None, None, None
+        return None, None, None, None
     pk = fo.team_key(pick)
     opp = kl if pk == kh else kh
     ml = game["ml"].get(pk)
+    ml_opp = game["ml"].get(opp)
     spread = game["spread"].get(pk)
     margin = None
     if pk in game["score"] and opp in game["score"]:
         margin = game["score"][pk] - game["score"][opp]
-    return ml, spread, margin
+    return ml, ml_opp, spread, margin
 
 
 def simulate_real_betting(actual_games, year, model, features, lookup,
                           thresholds=mm.BETTING_THRESHOLDS, stake=STAKE):
     """Settle one tournament's games at each confidence threshold under BOTH the
     moneyline and flip-to-spread strategies. Returns {'ml': {thr: stats},
-    'flip': {thr: stats}}."""
+    'flip': {thr: stats}, 'games': [per-game record, ...]} — the games list is
+    the base table the strategy lab (betting_strategies.py) post-processes."""
     # Pre-compute the model's pick, confidence and real lines once per game.
     graded = []
     for g in actual_games:
         th, sh = g["TEAM_HIGH"], int(g["SEED_HIGH"])
         tl, sl = g["TEAM_LOW"], int(g["SEED_LOW"])
-        pick, _, p_high = mm.predict_game_proba(th, sh, tl, sl, model_df, model, features)
+        pick, pick_seed, p_high = mm.predict_game_proba(
+            th, sh, tl, sl, model_df, model, features)
         p_win = p_high if pick == th else 1 - p_high
         implied = mm.prob_to_american_odds(p_win)
-        ml, spread, margin = real_game(lookup, year, th, tl, pick)
+        ml, ml_opp, spread, margin = real_game(lookup, year, th, tl, pick)
         covered = push = None
         if spread is not None and margin is not None:
             edge = margin + spread          # >0 pick covers, ==0 push
             push = edge == 0
             covered = edge > 0
-        graded.append({"implied": implied, "ml": ml, "correct": pick == g["WINNER"],
-                       "spread": spread, "covered": covered, "push": push})
+        graded.append({
+            "implied": implied, "ml": ml, "correct": pick == g["WINNER"],
+            "spread": spread, "covered": covered, "push": push,
+            # Fields for the per-game predictions table / strategy lab:
+            "round": g["ROUND"], "pick": pick, "pick_seed": pick_seed,
+            "opp_seed": sl if pick == th else sh,
+            "model_p": p_win, "ml_opp": ml_opp, "margin": margin,
+        })
 
     ml_res, flip_res = {}, {}
     for thresh in thresholds:
@@ -179,7 +192,14 @@ def simulate_real_betting(actual_games, year, model, features, lookup,
             "spread_bets": f_spread_bets, "ml_bets": f_ml_bets,
             "no_odds": f_no_odds, "no_spread": f_no_spread,
         }
-    return {"ml": ml_res, "flip": flip_res}
+
+    # Per-game rows for the strategy lab — only games with a real moneyline are
+    # bettable, so drop the rest here.
+    games = [{k: gr[k] for k in ("round", "pick", "pick_seed", "opp_seed",
+                                 "model_p", "ml", "ml_opp", "spread", "margin",
+                                 "correct", "covered", "push")}
+             for gr in graded if gr["ml"] is not None]
+    return {"ml": ml_res, "flip": flip_res, "games": games}
 
 
 # predict_game_proba needs the test year's team-stats frame; set per year in main.
@@ -197,7 +217,7 @@ def main():
     print(f"Real-odds backtest over {odds_years}")
     print(f"Windows: {list(mm.TRAINING_WINDOWS.keys())}\n")
 
-    ml_rows, flip_rows = [], []
+    ml_rows, flip_rows, game_rows = [], [], []
     total = len(mm.TRAINING_WINDOWS) * len(odds_years)
     done = 0
     for window_name, window_size in mm.TRAINING_WINDOWS.items():
@@ -230,6 +250,12 @@ def main():
             for thresh, s in sim["flip"].items():
                 flip_rows.append({"window": window_name, "test_year": test_year,
                                   "threshold": thresh, **s})
+            for gr in sim["games"]:
+                game_rows.append({"window": window_name, "year": test_year, **gr})
+
+    pd.DataFrame(game_rows).to_csv(
+        os.path.join(DATA_DIR, "bet_games.csv"), index=False)
+    print(f"\nWrote bet_games.csv ({len(game_rows)} settleable game-predictions)")
 
     out_ml = pd.DataFrame(ml_rows)
     out_flip = pd.DataFrame(flip_rows)
