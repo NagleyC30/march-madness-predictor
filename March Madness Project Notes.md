@@ -410,3 +410,40 @@ exist. Start the gf's **logo** now regardless (external lead time).
 6. **Parked on data** (items 10/11/12): 2027 field, scheduled-games feed, extend
    odds to 2022–2025.
 
+---
+
+**NEXT SESSION — START HERE (state as of 2026-07-10)**
+
+The whole reordered plan (items 1–5) is **shipped and merged to `main`** (PRs
+#2–#6). The app is renamed **B.O.B.** Everything left is data-gated or external —
+concrete resumable actions, roughly in order of "can do now" → "waits on data":
+
+1. **Biggest modelling lever (no blocker) — train the tournament model on the
+   ~103k regular-season games** in `data/games.csv`. Today the tournament model
+   (`mm_model`) only sees ~1k tournament games; `game_model` already uses the big
+   log. This is the structural fix for the overfitting the bake-off exposed (esp.
+   the MLP, log-loss 1.69) and the real prerequisite for a genuine deep neural
+   net. Everything downstream (betting numbers, contest, bake-off) would re-run
+   off the better probabilities — treat like Phase 2's cascade.
+2. **Drop in the real logo** whenever gf's asset is ready: add
+   `assets/logo.svg`/`.png` + `assets/icon.svg`/`.png` per `assets/README.md`;
+   they auto-override the placeholders, no code change.
+3. **Extend real odds to 2022–2025** (item 12) — source recent closing lines so
+   the betting backtests cover the full model era, not just through 2021. Not
+   time-gated, just a sourcing task.
+4. **~Nov 2026, when `2027_super_sked.csv` publishes:** the schedule-driven
+   "upcoming games" view (item 11) **and** the **contest auto-phase** (item 14) —
+   automated weekly slate (selection criteria already specced in item 14),
+   recurring pick prompt, Kelly/+EV betting on real lines, and durable (non-CSV)
+   contest storage.
+5. **After Selection Sunday 2027:** add the 2027 field rows to
+   `KenPom Barttorvik.csv` and re-run `predict_all_windows.py` (item 10).
+
+**Regenerate the app's data after any source change:** first the fetchers —
+`fetch_data.py` (games.csv), `fetch_odds.py` (odds.csv), `update_current_season.py`
+(ratings.csv) — then the analysis scripts, which each read those and write their
+own `data/*.csv` (order-independent among themselves): `precompute.py`,
+`backtest.py`, `backtest_pit.py`, `backtest_odds.py`, `backtest_calibrated.py`,
+`model_bakeoff.py`, `bracket_pool.py`, `model_explain.py`, `predict_all_windows.py`.
+Smoke-test with `python test_app.py`.
+

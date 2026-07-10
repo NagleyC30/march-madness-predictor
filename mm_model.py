@@ -1,8 +1,8 @@
-# mm_model.py — Importable core for the March Madness predictor.
+# mm_model.py — Importable core for the B.O.B. tournament predictor.
 #
-# This is a side-effect-free refactor of model_3_0.py: no stdout teeing, no
-# file writes on import. Both precompute.py and the Streamlit app import from
-# here so the modeling logic lives in exactly one place.
+# Side-effect-free: no stdout teeing, no file writes on import. precompute.py,
+# the Streamlit app, and the analysis scripts all import from here so the
+# tournament-modeling logic lives in exactly one place.
 
 import pandas as pd
 import numpy as np
