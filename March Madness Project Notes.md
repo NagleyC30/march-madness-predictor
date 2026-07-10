@@ -66,3 +66,73 @@ Run the experiment after having the model build and test on every year from 2008
 
 - Scheduled-game prediction ("upcoming games as they're scheduled") is **deferred**: Barttorvik's `2027_super_sked.csv` (the schedule) is still 404 — it publishes closer to tip-off (Nov 2026). `update_current_season.py` reports when it appears; a schedule-driven "upcoming games" view can be layered on then.
 
+
+
+**REFINED ROADMAP** (reprioritized 2026-07-09)
+
+Direction: make **betting the centerpiece** of the project, then broaden the
+**models**, then **polish the UI** for real users. Data-limited items wait until
+the data is published.
+
+---
+
+**PHASE 1 — Betting front and center (multiple strategies).** *(current focus)*
+
+6\. **Make betting the flagship of the app.** Elevate it in the information
+architecture — lead the navigation / Overview with the betting analysis, frame
+the whole project around "can the model beat the market," and consolidate the
+betting views into one strong dashboard instead of a single buried page.
+
+7\. **Build a strategy lab — try many betting strategies, compared side by side.**
+On top of the three current settlements (moneyline, flip-to-spread,
+model-implied), add:
+- **Value / +EV betting**: bet only where the model's win probability beats the
+  market's implied probability (from the real closing line) — the genuine "find
+  spots with an edge" test. Report whether *any* slice (underdogs, line ranges,
+  round) beats the close.
+- **Staking schemes**: flat vs **fractional Kelly** (sized by the estimated edge).
+- **Selection variants**: underdog-only, by-seed, by-round, favorites-only.
+- Compare all strategies on one dashboard: ROI, win rate, **max drawdown**,
+  bankroll **equity curve** over time.
+
+---
+
+**PHASE 2 — Model bake-off (expand beyond RandomForest / Bagging).**
+
+8\. **Add more ML models and compare them.** Broaden the tournament pipeline past
+RandomForest + BaggingClassifier to e.g. **Logistic Regression** (a naturally
+calibrated baseline), **Gradient/HistGradient Boosting**, **SVM**, **MLP**, and
+optionally **XGBoost/LightGBM** (weigh the extra deploy dependency). Compare on:
+- walk-forward **accuracy** and **Brier / log-loss**,
+- **calibration** (reliability diagrams; boosting/forests are often
+  miscalibrated → add isotonic/Platt where it helps — the general game model
+  already has a calibration page to mirror),
+- **betting P&L** (which model actually loses the least / finds the most value),
+- and **bracket-pool points** (standard 10/20/40/80/160/320-by-round scoring
+  across 2009–2025) — a concrete "which model fills the best bracket" metric.
+Surface a model-comparison view in the app.
+
+---
+
+**PHASE 3 — UI / UX polish (make it nice for people to use).**
+
+9\. **Design pass on the app.** Custom Streamlit theme (colors, fonts via
+`.streamlit/config.toml`), cleaner navigation and a real landing/Overview page,
+consistent chart styling, readable copy, and mobile-friendly layout. Goal: it
+looks polished and is easy for a non-technical visitor to explore.
+
+---
+
+**PHASE 4 — Parked until the data is published.**
+
+10\. **Complete item 4 (2027 field):** add 2027 rows to `KenPom Barttorvik.csv`
+and re-run `predict_all_windows.py` once Selection Sunday 2027 sets the field.
+
+11\. **Complete item 5 (scheduled games):** build the schedule-driven "upcoming
+2026–27 games" view (+ optional auto-refresh of ratings) when
+`2027_super_sked.csv` publishes (~Nov 2026).
+
+12\. **Extend real odds to 2022–2025:** find a recent-lines source so the betting
+backtests cover the full model era, not just through 2021. (Not strictly
+time-gated — a sourcing task that can happen whenever.)
+
