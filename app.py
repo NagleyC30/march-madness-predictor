@@ -101,6 +101,8 @@ def load_bakeoff():
     out["meta"] = pd.read_csv(m_path).iloc[0] if os.path.exists(m_path) else None
     p_path = os.path.join(DATA_DIR, "bracket_pool_summary.csv")
     out["pool"] = pd.read_csv(p_path) if os.path.exists(p_path) else None
+    rs_path = os.path.join(DATA_DIR, "regseason_compare_summary.csv")
+    out["regseason"] = pd.read_csv(rs_path) if os.path.exists(rs_path) else None
     return out
 
 
@@ -1173,6 +1175,38 @@ elif page == "Model Bake-off":
                 "rare, but the comparison is apples-to-apples across models."
             )
 
+        # ── Does more training data help? ───────────────────────────
+        rs = bake.get("regseason")
+        if rs is not None and not rs.empty:
+            st.subheader("Does more training data help? (the ~90k-game test)")
+            st.markdown(
+                "The overconfidence above comes partly from training on only ~1,000 "
+                "tournament games — so the obvious fix is *more data*. We tested that "
+                "directly: same feature space, same model (HistGradientBoosting), same "
+                "test games — only the **training set** changes, from ~1,000 "
+                "tournament games to the **~90,000-game regular-season log**."
+            )
+            rd = rs.rename(columns={
+                "model": "Training set", "calibrated": "Calibration",
+                "games": "Test games", "accuracy": "Accuracy", "brier": "Brier",
+                "log_loss": "Log-loss", "ece": "ECE"})
+            st.dataframe(
+                rd.style.format({"Accuracy": "{:.3f}", "Brier": "{:.4f}",
+                                 "Log-loss": "{:.4f}", "ECE": "{:.4f}"})
+                .apply(_shade_low_good, subset=["Brier", "Log-loss"]),
+                hide_index=True, width="stretch")
+            st.warning(
+                "**Surprise: more data made it *worse*.** Training on the full "
+                "regular-season log **lowered** accuracy (0.80 vs 0.86) and worsened "
+                "Brier and log-loss. Regular-season games are a **different "
+                "distribution** — blowouts, home courts, mismatched teams — so the "
+                "extra volume dilutes the tournament-specific signal instead of "
+                "reducing variance. **More data only helps when it's on-distribution.** "
+                "(Both regimes share the season-aggregate ratings leakage, so the "
+                "*absolute* numbers are optimistic — but the *relative* comparison, "
+                "which is the point, holds.)"
+            )
+
 
 # ──────────────────────────────────────────────────────────────
 # PAGE: HOW THE MODELS WORK
@@ -1189,8 +1223,8 @@ elif page == "How the Models Work":
 
     st.header("How the model sees a game")
     st.markdown(
-        "Every game is reduced to one row of **differences**. For each of the 34 "
-        "KenPom/Barttorvik ratings we subtract the lower seed's value from the "
+        "Every game is reduced to one row of **differences**. For each of the "
+        "~90 KenPom/Barttorvik ratings we subtract the lower seed's value from the "
         "higher seed's, and the model learns to predict **`HIGH_SEED_WINS`** (1 if "
         "the better seed wins). So a *positive* number always means \"the "
         "favorite has more of this stat.\" The model never sees team names — only "
@@ -1295,24 +1329,30 @@ elif page == "How the Models Work":
     )
     st.markdown(
         "- **The blocker is data size, not tooling.** The tournament model trains "
-        "on only ~1,000 games with 34 features. Deep nets are hungry; on small, "
-        "tabular data they **overfit** — exactly what we saw (the MLP's log-loss "
-        "blew up to 1.69). Gradient-boosted trees usually *beat* neural nets in "
-        "this regime.\n"
-        "- **The real unlock is more data.** There are **~103,000 regular-season "
-        "games** the tournament model currently ignores. Training on those is the "
-        "structural fix for overfitting **and** the genuine prerequisite for a "
-        "deep network — it's logged as the next big modelling item.\n"
+        "on only ~1,000 games (with ~90 rating features). Deep nets are hungry; on "
+        "small, tabular data they **overfit** — exactly what we saw (the MLP's "
+        "log-loss blew up to 1.69). Gradient-boosted trees usually *beat* neural "
+        "nets in this regime.\n"
+        "- **But \"just add more data\" isn't a free lunch.** We tested it: training "
+        "the same model on the **~90,000-game regular-season log** instead of ~1,000 "
+        "tournament games made tournament predictions **worse**, not better "
+        "(accuracy 0.80 vs 0.86; higher Brier and log-loss). Regular-season games "
+        "are a *different distribution* — blowouts, home courts, mismatches — so the "
+        "extra volume dilutes the tournament signal. More data only helps if it's "
+        "**on-distribution**; see the Bake-off's *\"more data\"* section.\n"
         "- **Calibration still applies.** Neural nets are miscalibrated out of the "
         "box too, so they'd need the same isotonic/Platt step the trees got.\n"
         "- **Deploy cost.** A real deep net means PyTorch/Keras — heavy for this "
         "Streamlit app — whereas the MLP rides along inside scikit-learn for free."
     )
     st.info(
-        "**Bottom line.** More flexible ≠ better on a small dataset. Random Forest "
-        "quietly wins here because averaging keeps it honest. A deep neural net "
-        "becomes worth trying **after** we train on the full regular-season "
-        "history — see the **Model Bake-off** page for the head-to-head numbers."
+        "**Bottom line.** More flexible ≠ better on a small dataset, and — as we "
+        "found — more *data* isn't automatically better either when it comes from a "
+        "different distribution. Random Forest quietly wins here because averaging "
+        "keeps it honest. A genuine deep net would need *on-distribution* data at "
+        "scale (e.g. many seasons of neutral-site games between tournament-quality "
+        "teams), which we don't have — so it stays a labelled experiment, not the "
+        "default."
     )
 
 
