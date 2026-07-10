@@ -228,14 +228,12 @@ time-gated — a sourcing task that can happen whenever.)
 **NEW REQUESTS (added 2026-07-10)** — with feasibility notes + a reprioritized
 order. See "REORDERED PLAN" at the bottom for the cascade-aware sequence.
 
-13\. **Rename the project to B.O.B. (Betting on Basketball).** -- **TODO (do as
-part of the branding pass, item 16 — not piecemeal)**
-- Touches every UI surface: `page_title`/`page_icon` in `app.py`, page titles,
-  the Overview copy, README, and chart headers. Cheap individually but spread
-  across many strings.
-- **Cascade rule:** don't rename now and re-theme later — every string the rename
-  touches is a string the theme/logo pass (item 16) also touches. Bundle rename +
-  theme + logo into one branding pass so the chrome is rewritten exactly once.
+13\. **Rename the project to B.O.B. (Betting on Basketball).** -- **DONE (2026-07-10,
+with the branding pass — items 13 + 16 shipped together)**
+- Renamed across `app.py` (`page_title` → "B.O.B. — Betting on Basketball",
+  `page_icon`, sidebar title, module docstring), the **Overview** brand header +
+  framing copy ("can it beat the market?"), and `README.md`. Centralized in
+  `branding.py` (`APP_NAME`/`APP_TAGLINE`/`APP_ICON`) so it's defined once.
 
 14\. **"Me vs. the Machine" contest page — my predictions vs. the models'.** For
 every game the model predicts, I also predict; we run an everlasting scoreboard
@@ -360,17 +358,21 @@ the predictor into a **neural network**: how, and what constraints block it. --
     default.
 
 16\. **Branding UI: theme selector + human-designed logo (by my gf).** New UI to
-pick a theme and attach the logo. -- **TODO (Phase 3; kick off the logo asset
-now for lead time)**
-- Streamlit theming via `.streamlit/config.toml` + `st.logo()`; a theme selector
-  can swap palettes at runtime. Folds together with the **B.O.B. rename (item
-  13)** and the existing Phase-3 design pass (item 9) into **one branding pass**.
-- **Cascade rules:** (a) do branding **last**, after the contest page (14) and
-  learning page (15) exist, so all pages get themed in one sweep instead of
-  restyling on every new page; (b) but the **logo is an external dependency (gf's
-  design)** with lead time — **request the asset now** even though integration is
-  late. Needs: format (SVG preferred, transparent PNG fallback), light+dark
-  variants, and a square icon crop for `page_icon`/favicon.
+pick a theme and attach the logo. -- **DONE (2026-07-10) — logo slot awaits the real asset**
+- **`branding.py`** centralizes it all: brand name/tagline/icon, 5 accent
+  **themes** (Hardwood default, Baseline Blue, Net Green, Buzzer Purple, Classic
+  Red), `apply_theme` (runtime CSS injection), `render_logo`, `render_brand_header`.
+- **Theme selector** in the sidebar swaps the accent at runtime (recolours primary
+  buttons, links, headers, brand mark, accent bar). Native light/dark stays the
+  Streamlit menu toggle; `.streamlit/config.toml` primaryColor set to the Hardwood
+  default so native widgets stay in step. Switching verified via Streamlit
+  `AppTest` (Hardwood→Net Green→Buzzer Purple all inject the right accent).
+- **Logo slot** via `st.logo()` — loads `assets/logo.svg`→`logo.png`→placeholder
+  (same for the square icon). Ships a placeholder wordmark + icon; **`assets/README.md`
+  has the drop-in spec for gf's real logo** (SVG + transparent PNG, light+dark
+  variants, square crop). Drop the real files in and they take over — no code change.
+- **Still needs:** gf's actual logo files (the one external dependency); optional
+  richer theming (full palettes / dark presets) later.
 
 ---
 
@@ -402,6 +404,9 @@ exist. Start the gf's **logo** now regardless (external lead time).
    recurring prompt + Kelly/+EV betting deferred to the data phase.
 5. **Branding pass (items 13 + 16 + Phase-3 item 9)** — rename to **B.O.B.**,
    theme selector, drop in gf's logo; theme every page in one sweep.
+   -- **DONE (2026-07-10).** Renamed to B.O.B.; `branding.py` with 5 accent themes +
+   a sidebar theme selector; logo slot with placeholder awaiting gf's real asset
+   (spec in `assets/README.md`).
 6. **Parked on data** (items 10/11/12): 2027 field, scheduled-games feed, extend
    odds to 2022–2025.
 

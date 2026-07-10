@@ -1,4 +1,4 @@
-# app.py — Streamlit dashboard for the March Madness predictor.
+# app.py — Streamlit dashboard for B.O.B. (Betting on Basketball).
 #
 # Dashboards (Predictions / Accuracy / Betting / Data) read precomputed CSVs in
 # ./data so they load instantly on Streamlit Community Cloud. The interactive
@@ -15,13 +15,15 @@ import game_model as gm
 import betting_strategies as bs
 import model_explain as me
 import contest as ct
+import branding as brand
 
 st.set_page_config(
-    page_title="March Madness Predictor",
-    page_icon="🏀",
+    page_title=f"{brand.APP_NAME} — {brand.APP_TAGLINE}",
+    page_icon=brand.APP_ICON,
     layout="wide",
     initial_sidebar_state="expanded",
 )
+brand.render_logo()
 
 DATA_DIR = "data"
 
@@ -191,11 +193,13 @@ results = load_results()
 all_years = sorted(df_raw["YEAR"].unique())
 completed_years = [y for y in all_years if y not in (2026, 2027)]
 
-st.sidebar.title("🏀 March Madness Predictor")
+st.sidebar.title(f"{brand.APP_ICON} {brand.APP_NAME}")
 st.sidebar.caption(
+    f"**{brand.APP_TAGLINE}** — can the model beat the market?  \n"
     "Walk-forward ML on KenPom + Barttorvik efficiency ratings, "
     f"{completed_years[0]}–{completed_years[-1]}."
 )
+brand.theme_selector()
 
 page = st.sidebar.radio(
     "Navigate",
@@ -225,12 +229,13 @@ st.sidebar.caption(
 # ──────────────────────────────────────────────────────────────
 
 if page == "Overview":
-    st.title("🏀 March Madness Bracket Predictor")
+    brand.render_brand_header()
     st.markdown(
-        "A machine-learning model that predicts NCAA tournament games from "
-        "**KenPom** and **Barttorvik** team-efficiency ratings. It's validated "
-        "**walk-forward**: to predict any year, it only ever trains on tournaments "
-        "that happened *before* that year — no peeking at the future."
+        "**B.O.B. — Betting on Basketball.** A machine-learning model that predicts "
+        "NCAA basketball games from **KenPom** and **Barttorvik** team-efficiency "
+        "ratings, built to ask one question: **can it beat the market?** It's "
+        "validated **walk-forward** — to predict any year, it only ever trains on "
+        "games that happened *before* it, no peeking at the future."
     )
 
     if results["summary"] is not None:

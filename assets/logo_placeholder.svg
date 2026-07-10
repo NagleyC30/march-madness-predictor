@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 76" width="300" height="76" role="img" aria-label="B.O.B. — Betting on Basketball">
+  <!-- Placeholder wordmark. Replace with assets/logo.svg (or logo.png) — the
+       human-designed logo. Designed for a light background; a dark variant
+       should ship as part of the real asset set (see assets/README.md). -->
+  <g>
+    <!-- basketball -->
+    <circle cx="38" cy="38" r="30" fill="#E8590C"/>
+    <g stroke="#7a2e06" stroke-width="2.4" fill="none">
+      <circle cx="38" cy="38" r="30"/>
+      <path d="M38 8 V68"/>
+      <path d="M8 38 H68"/>
+      <path d="M17 16 C30 30 30 46 17 60"/>
+      <path d="M59 16 C46 30 46 46 59 60"/>
+    </g>
+  </g>
+  <text x="84" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="34"
+        font-weight="800" letter-spacing="1" fill="#1a2b45">B.O.B.</text>
+  <text x="85" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="12.5"
+        font-weight="600" letter-spacing=".5" fill="#5b6b82">Betting on Basketball</text>
+</svg>
