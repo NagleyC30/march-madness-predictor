@@ -42,6 +42,12 @@ Run the experiment after having the model build and test on every year from 2008
 
 - Shown in the app's **Betting Simulation** page via a "Real sportsbook odds" vs "Model-implied odds" toggle.
 
+3b\. Flip heavy chalk to spread bets: when the real moneyline on a pick is shorter (more favored) than the threshold, the moneyline pays too little — so instead take the point spread at standard -110 juice (per the Kelly/Michigan -30.5 note above). Bet moneyline when the real line is at or above the threshold, flip to the spread when it's below. Compare the flip strategy's P&L against moneyline-only. -- **COMPLETE**
+
+- Added real closing spreads + final scores to `data/odds.csv` (spread = smaller of the two SBR Close cells, favorite lays it; validated at a 48% home cover rate). `backtest_odds.py` now settles both strategies in one run → `data/betting_simulation_spreadflip.csv`.
+
+- Result: flipping to the spread **doesn't help — it's worse** at 19 of 20 window×threshold combos (~ -5% to -11% ROI vs -2% to -7% for moneyline). The closing spread is efficient: a near-certain moneyline win becomes a ~coin-flip cover (1165–1170 ATS at -200) and you eat the -110 vig every time. The naive "take the points on a huge favorite" intuition doesn't survive contact with real, efficient closing lines. Shown as a third strategy toggle on the **Betting Simulation** page.
+
 4\. Apply each model to the 2027 tournament. 
 
 5\. Build a current-season predictor for the upcoming year's games: pull the live/preseason Barttorvik ratings for the in-progress 2026–27 season and let the app predict upcoming regular-season and tournament games as they're scheduled (updating as ratings refresh through the season). Extends the general Game Predictor, which currently covers completed seasons 2008–2026.

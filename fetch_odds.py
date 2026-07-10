@@ -12,9 +12,13 @@
 #
 # Output (committed, consumed by backtest_odds.py):
 #   data/odds.csv  — one row per game:
-#       YEAR, DATE, AWAY, HOME, NEUTRAL, ML_AWAY, ML_HOME, AWAY_KEY, HOME_KEY
+#       YEAR, DATE, AWAY, HOME, NEUTRAL, ML_AWAY, ML_HOME,
+#       SPREAD_AWAY, SPREAD_HOME, AWAY_SCORE, HOME_SCORE, AWAY_KEY, HOME_KEY
 #   where *_KEY is a canonical team key that joins to the model's team names
-#   (see team_key()). Rows with a missing/unusable moneyline are dropped.
+#   (see team_key()), the signed SPREAD_* let spread bets be settled (favorite
+#   negative), and the scores give the actual margin. Rows with a missing/
+#   unusable moneyline are dropped; spread/score fields may be blank if that
+#   game had no closing spread or score in the archive.
 #
 # Usage:  python fetch_odds.py            # all available tournament years
 #         python fetch_odds.py 2019       # one tournament year
@@ -202,6 +206,37 @@ def _iso_date(mmdd, tour_year):
     return f"{cal_year:04d}-{month:02d}-{day:02d}"
 
 
+def _num(v):
+    """Parse a numeric line cell to float, or None. 'pk'/'pick' (pick'em) -> 0."""
+    if pd.isna(v):
+        return None
+    if isinstance(v, str):
+        v = v.strip().lower()
+        if v in ("pk", "pick", "p"):
+            return 0.0
+        try:
+            return float(v)
+        except ValueError:
+            return None
+    return float(v)
+
+
+def _spreads(close_a, close_b, ml_away, ml_home):
+    """Split the two Close cells into (spread_away, spread_home).
+
+    SBR interleaves the point spread and the game total across a game's two rows;
+    the spread is the smaller magnitude, the total the larger. The favorite (more
+    negative moneyline) lays the spread, so its spread is negative and the
+    underdog's is the mirror. Returns (None, None) if either cell is unusable."""
+    ca, cb = _num(close_a), _num(close_b)
+    if ca is None or cb is None:
+        return None, None
+    mag = min(abs(ca), abs(cb))               # spread magnitude (< total)
+    if ml_away <= ml_home:                     # away is the favorite
+        return -mag, mag
+    return mag, -mag
+
+
 def parse_season(tour_year):
     df = pd.read_excel(_download(tour_year))
     recs = df.to_dict('records')
@@ -220,6 +255,9 @@ def parse_season(tour_year):
         except (ValueError, TypeError):
             continue
         away, home = str(a['Team']).strip(), str(h['Team']).strip()
+        spread_away, spread_home = _spreads(
+            a.get('Close'), h.get('Close'), ml_away, ml_home)
+        score_away, score_home = _num(a.get('Final')), _num(h.get('Final'))
         out.append({
             "YEAR": tour_year,
             "DATE": date,
@@ -228,6 +266,10 @@ def parse_season(tour_year):
             "NEUTRAL": vh_a == 'N',
             "ML_AWAY": ml_away,
             "ML_HOME": ml_home,
+            "SPREAD_AWAY": spread_away,
+            "SPREAD_HOME": spread_home,
+            "AWAY_SCORE": None if score_away is None else int(score_away),
+            "HOME_SCORE": None if score_home is None else int(score_home),
             "AWAY_KEY": team_key(away),
             "HOME_KEY": team_key(home),
         })

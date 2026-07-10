@@ -41,6 +41,7 @@ def load_results():
         "wf": "walk_forward_accuracy.csv",
         "bet": "betting_simulation.csv",
         "bet_real": "betting_simulation_real.csv",
+        "bet_flip": "betting_simulation_spreadflip.csv",
         "bet_real_meta": "betting_real_meta.csv",
         "summary": "window_summary.csv",
         "bracket2026": "bracket_prediction_2026.csv",
@@ -708,10 +709,14 @@ elif page == "Betting Simulation":
     def _render_bet_table(summ, window, extra_cols=()):
         """Threshold P&L table for one training window."""
         wsub = summ[summ["window"] == window].sort_values("threshold")
-        cols = ["threshold", "placed", "won", "lost", "net_pnl", "roi_pct", *extra_cols]
+        base = ["threshold", "placed", "won", "lost"]
+        if "push" in extra_cols:
+            base.append("push")
+        cols = base + ["net_pnl", "roi_pct", *(c for c in extra_cols if c != "push")]
         names = {"threshold": "Confidence line", "placed": "Bets", "won": "Won",
-                 "lost": "Lost", "net_pnl": "Net P&L ($)", "roi_pct": "ROI %",
-                 "avg_ml": "Avg real line", "no_odds": "No line"}
+                 "lost": "Lost", "push": "Push", "net_pnl": "Net P&L ($)",
+                 "roi_pct": "ROI %", "avg_ml": "Avg real line", "no_odds": "No line",
+                 "spread_bets": "Spread bets", "ml_bets": "ML bets"}
         disp = wsub[cols].rename(columns=names)
         st.dataframe(
             disp.style.format({"Net P&L ($)": "{:+.2f}", "ROI %": "{:+.1f}",
@@ -738,10 +743,13 @@ elif page == "Betting Simulation":
             strokeDash=[4, 4], color="gray").encode(y="y:Q")
         st.altair_chart((line + zero).properties(height=350), width="stretch")
 
-    bet_real, bet_impl = results["bet_real"], results["bet"]
+    bet_real, bet_flip, bet_impl = (
+        results["bet_real"], results["bet_flip"], results["bet"])
     sources = []
     if bet_real is not None:
-        sources.append("Real sportsbook odds")
+        sources.append("Real odds — moneyline")
+    if bet_flip is not None:
+        sources.append("Real odds — flip chalk to spread")
     if bet_impl is not None:
         sources.append("Model-implied odds (calibration)")
 
@@ -749,16 +757,16 @@ elif page == "Betting Simulation":
         st.warning("No precomputed betting data. Run `python backtest_odds.py` "
                    "(and `python precompute.py`) first.")
     else:
-        source = st.radio("Odds source", sources, horizontal=True)
+        source = st.radio("Strategy", sources, horizontal=True)
         st.markdown(
             "At each **confidence threshold** the model bets $10 on its pick only "
             "when it is at least that confident (e.g. `-300` = only very strong "
             "favorites). Higher thresholds → fewer, chalkier bets."
         )
+        meta = results["bet_real_meta"]
+        yrs = meta.iloc[0]["odds_years"] if meta is not None else "2009–2019, 2021"
 
-        if source.startswith("Real"):
-            meta = results["bet_real_meta"]
-            yrs = meta.iloc[0]["odds_years"] if meta is not None else "2009–2019, 2021"
+        if source == "Real odds — moneyline":
             st.info(
                 "Every bet is settled at the game's **real closing moneyline** "
                 "from the sportsbook archive and against the real result — this is "
@@ -787,6 +795,36 @@ elif page == "Betting Simulation":
                 "full unit when they don't, and the model has no true edge over the "
                 "closing line. This is exactly the Kelly intuition — on a huge "
                 "favorite there is almost nothing worth betting."
+            )
+        elif source == "Real odds — flip chalk to spread":
+            st.info(
+                "Same picks and thresholds, but when the pick's **real moneyline is "
+                "shorter than the threshold** (heavy chalk that pays pennies), the "
+                "bet is placed on the **real point spread at −110** instead — the "
+                "'take the points on a huge favorite' idea. Softer lines still bet "
+                "the moneyline. **Spread bets** / **ML bets** show the split; "
+                "**Push** = the favorite landed exactly on the number."
+            )
+            summ = (bet_flip.groupby(["window", "threshold"]).agg(
+                placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
+                push=("push", "sum"), net_pnl=("net_pnl", "sum"),
+                wagered=("total_wagered", "sum"),
+                spread_bets=("spread_bets", "sum"), ml_bets=("ml_bets", "sum"),
+            ).reset_index())
+            summ["roi_pct"] = (summ["net_pnl"] / summ["wagered"] * 100).round(1)
+
+            window = st.selectbox("Training window",
+                                  sorted(summ["window"].unique()), index=0)
+            _render_bet_table(summ, window,
+                              extra_cols=("push", "spread_bets", "ml_bets"))
+            st.subheader("Cumulative P&L over time")
+            _render_cum_chart(bet_flip, window)
+            st.caption(
+                "Flipping to the spread doesn't rescue it — arguably makes it "
+                "worse. The closing spread is efficient, so a near-certain "
+                "moneyline win becomes a ~coin-flip cover, and you pay −110 vig on "
+                "each one. The market has already priced the favorite fairly on "
+                "both the moneyline and the spread."
             )
         else:
             st.warning(

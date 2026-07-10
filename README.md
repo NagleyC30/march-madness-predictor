@@ -32,7 +32,7 @@ trains on seasons that happened *before* it — no looking into the future. Acro
 | `mm_model.py` | Importable, side-effect-free modeling core. |
 | `precompute.py` | Runs the heavy walk-forward once, writes result CSVs to `data/`. |
 | `fetch_odds.py` | Downloads & parses real historical sportsbook moneylines → `data/odds.csv`. |
-| `backtest_odds.py` | Settles the model's picks at those real odds → `data/betting_simulation_real.csv`. |
+| `backtest_odds.py` | Settles the model's picks at those real odds (moneyline + flip-to-spread) → `data/betting_simulation_{real,spreadflip}.csv`. |
 | `data/` | Precomputed results the app loads instantly. |
 | `KenPom Barttorvik.csv` | Source team-season efficiency ratings (2008–2026). |
 | `requirements.txt` | Python dependencies for Streamlit Community Cloud. |
@@ -103,6 +103,14 @@ python backtest_odds.py     # data/betting_simulation_real.csv — P&L
   and cost a full unit when they don't, and the model has no edge over the
   closing line. This is the Kelly intuition made concrete — on a huge favorite
   there is essentially nothing worth betting.
+- **Flip to spreads?** (`betting_simulation_spreadflip.csv`) — the natural next
+  idea is to *take the points* on those heavy favorites: when a pick's real
+  moneyline is shorter than the threshold, bet the real closing spread at −110
+  instead. It doesn't help — it's **worse** at 19 of 20 window × threshold
+  combinations (−5% to −11% ROI). The closing spread is efficient, so a
+  near-certain moneyline win becomes a ~coin-flip cover (1165–1170 against the
+  spread at −200) and you pay the −110 vig on every one. The market has already
+  priced the favorite fairly on both markets.
 
 ## ⚠️ Disclaimer
 
