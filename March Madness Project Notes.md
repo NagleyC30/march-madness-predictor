@@ -177,8 +177,21 @@ Surface a model-comparison view in the app.
     the RF/Bagging the bake-off already found *well-calibrated*. The dramatic
     overconfidence lived in the models the backtest doesn't use (MLP, raw
     boosting). Consistent story across both sub-steps.
-- **Still TODO in Phase 2:**
-  - **Sub-step c — bracket-pool points** (10/20/40/80/160/320-by-round) per model.
+- **Sub-step c — bracket-pool points per model — DONE (2026-07-10).**
+  `bracket_pool.py` walk-forwards each roster model's *full* bracket
+  (`simulate_full_bracket`), scores it 10/20/40/80/160/320-by-round via the app's
+  cascade scorer, and sums over 2009–2025 → `data/bracket_pool_{summary,by_year}.csv`.
+  Includes a **Chalk (always higher seed)** baseline. New "Which model fills the
+  best bracket?" section on the Model Bake-off page (bar chart vs the chalk line +
+  per-round table).
+- **Finding:** **Random Forest is the only model that clearly beats chalk** (8740
+  vs 8170 pts over 16 yrs); **the MLP is worst by far (6510)** — the same
+  overfitting that wrecked its calibration busts its brackets. HGB and LogReg also
+  trail chalk. **Caveat surfaced in-app:** the *Championship* column is 0 for every
+  model because the cascade convention only credits a game when *both* teams in the
+  predicted matchup actually reached it — near-impossible by the final, so deep-
+  round credit is rare (but the comparison stays apples-to-apples).
+- **Still TODO / optional in Phase 2:**
   - Optional: run the bake-off across all five windows (currently `all_prior`
     only); consider XGBoost/LightGBM iff a real gain justifies the dep.
   - **New follow-up (from the overfitting review):** train the classifier on the
@@ -351,7 +364,8 @@ exist. Start the gf's **logo** now regardless (external lead time).
    - **Sub-step b — calibrated probs → betting backtest: DONE (2026-07-10).**
      Edges partly survive; ¼-Kelly improves everywhere; claimed edge unmoved
      because the backtest model was already well-calibrated.
-   - **Sub-step c — bracket-pool points per model (do next).**
+   - **Sub-step c — bracket-pool points per model: DONE (2026-07-10).** Random
+     Forest is the only model that beats a chalk bracket; MLP is worst.
 3. **Learning page (item 15)** — write it against the models that now exist.
 4. **Me-vs-Machine contest (item 14)** — build once on calibrated probs. Ship
    manual-entry mode first; wire the schedule feed when `2027_super_sked.csv`

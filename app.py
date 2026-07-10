@@ -88,6 +88,8 @@ def load_bakeoff():
     out = {"summary": pd.read_csv(s_path), "reliability": pd.read_csv(r_path)}
     m_path = os.path.join(DATA_DIR, "model_bakeoff_meta.csv")
     out["meta"] = pd.read_csv(m_path).iloc[0] if os.path.exists(m_path) else None
+    p_path = os.path.join(DATA_DIR, "bracket_pool_summary.csv")
+    out["pool"] = pd.read_csv(p_path) if os.path.exists(p_path) else None
     return out
 
 
@@ -935,6 +937,57 @@ elif page == "Model Bake-off":
             "overconfident models. Next: feed these calibrated probabilities back "
             "into the betting backtest and see whether the +EV edges survive."
         )
+
+        # ── Which model fills the best bracket? ─────────────────────
+        pool = bake.get("pool")
+        if pool is not None and not pool.empty:
+            st.subheader("Which model fills the best bracket?")
+            st.markdown(
+                "Accuracy and Brier weight every game equally, but a bracket "
+                "**pool** doesn't: calling the champion is worth **320** points, a "
+                "first-round game only **10**. Each model's full walk-forward "
+                "bracket, scored 10/20/40/80/160/320 by round and summed over "
+                "2009–2025 — against a **chalk** baseline that always picks the "
+                "higher seed."
+            )
+            chalk_total = float(pool.loc[pool["model"].str.startswith("Chalk"),
+                                         "total"].iloc[0]) if pool["model"].str.startswith("Chalk").any() else None
+            pool_disp = pool.copy()
+            pool_disp["beats_chalk"] = pool_disp["total"] >= (chalk_total or 0)
+            bar = alt.Chart(pool_disp).mark_bar().encode(
+                x=alt.X("total:Q", title="Total pool points (2009–2025)"),
+                y=alt.Y("model:N", sort="-x", title=None),
+                color=alt.Color("beats_chalk:N", title="Beats chalk?",
+                                scale=alt.Scale(domain=[True, False],
+                                                range=["#2ca02c", "#d62728"])),
+                tooltip=["model", "total", "avg_per_year", "pct_of_max"],
+            )
+            rule = None
+            if chalk_total is not None:
+                rule = alt.Chart(pd.DataFrame({"x": [chalk_total]})).mark_rule(
+                    strokeDash=[4, 4], color="gray").encode(x="x:Q")
+            st.altair_chart((bar + rule) if rule is not None else bar,
+                            use_container_width=True)
+
+            round_cols = ["R64", "R32", "S16", "E8", "F4", "Championship"]
+            pd_disp = pool[["model", "total", "avg_per_year", "pct_of_max"] + round_cols].rename(
+                columns={"model": "Model", "total": "Total", "avg_per_year": "Avg/yr",
+                         "pct_of_max": "% of max"})
+            st.dataframe(
+                pd_disp.style.format({"Total": "{:.0f}", "Avg/yr": "{:.1f}",
+                                      "% of max": "{:.1f}",
+                                      **{c: "{:.0f}" for c in round_cols}}),
+                hide_index=True, width="stretch",
+            )
+            st.info(
+                "**Takeaway.** Only **Random Forest** clearly beats a chalk bracket; "
+                "the **MLP is the worst by far** — the same overfitting that wrecked "
+                "its calibration also busts its brackets. The **Championship column "
+                "is 0 for everyone**: under the app's cascade scoring a game only "
+                "counts if *both* teams in your predicted matchup actually reached it, "
+                "which essentially never holds by the final — so deep-round credit is "
+                "rare, but the comparison is apples-to-apples across models."
+            )
 
 
 # ──────────────────────────────────────────────────────────────

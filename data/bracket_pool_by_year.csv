@@ -1,0 +1,113 @@
+model,year,R64,R32,S16,E8,F4,Championship,total
+Chalk (always higher seed),2009,220,120,160,80,160,0,740
+Chalk (always higher seed),2010,220,80,40,0,0,0,340
+Chalk (always higher seed),2011,250,160,40,0,0,0,450
+Chalk (always higher seed),2012,220,140,80,0,0,0,440
+Chalk (always higher seed),2013,220,140,40,80,0,0,480
+Chalk (always higher seed),2014,240,120,80,0,0,0,440
+Chalk (always higher seed),2015,270,140,40,160,160,0,770
+Chalk (always higher seed),2016,190,40,160,0,0,0,390
+Chalk (always higher seed),2017,260,140,160,80,160,0,800
+Chalk (always higher seed),2018,230,100,0,80,0,0,410
+Chalk (always higher seed),2019,200,80,160,0,0,0,440
+Chalk (always higher seed),2021,220,80,40,0,160,0,500
+Chalk (always higher seed),2022,220,80,80,0,0,0,380
+Chalk (always higher seed),2023,250,120,40,0,0,0,410
+Chalk (always higher seed),2024,210,80,40,80,0,0,410
+Chalk (always higher seed),2025,250,120,160,240,0,0,770
+Logistic Regression,2009,230,160,80,0,0,0,470
+Logistic Regression,2010,230,100,0,0,0,0,330
+Logistic Regression,2011,200,20,40,0,0,0,260
+Logistic Regression,2012,230,140,160,80,0,0,610
+Logistic Regression,2013,230,120,80,0,0,0,430
+Logistic Regression,2014,230,60,80,0,0,0,370
+Logistic Regression,2015,260,120,80,80,0,0,540
+Logistic Regression,2016,220,140,80,0,0,0,440
+Logistic Regression,2017,260,120,40,0,0,0,420
+Logistic Regression,2018,260,100,40,0,0,0,400
+Logistic Regression,2019,220,80,200,160,0,0,660
+Logistic Regression,2021,230,100,80,80,0,0,490
+Logistic Regression,2022,210,60,40,0,0,0,310
+Logistic Regression,2023,220,60,0,0,0,0,280
+Logistic Regression,2024,200,100,40,80,0,0,420
+Logistic Regression,2025,240,100,80,240,0,0,660
+Random Forest,2009,220,120,200,80,160,0,780
+Random Forest,2010,220,80,40,0,0,0,340
+Random Forest,2011,210,80,0,0,0,0,290
+Random Forest,2012,220,120,80,80,160,0,660
+Random Forest,2013,220,140,80,80,0,0,520
+Random Forest,2014,240,100,80,0,0,0,420
+Random Forest,2015,270,180,120,160,160,0,890
+Random Forest,2016,200,80,120,80,0,0,480
+Random Forest,2017,290,140,160,80,160,0,830
+Random Forest,2018,230,100,40,0,0,0,370
+Random Forest,2019,210,120,160,0,0,0,490
+Random Forest,2021,230,100,0,0,160,0,490
+Random Forest,2022,230,100,80,0,0,0,410
+Random Forest,2023,230,100,40,0,0,0,370
+Random Forest,2024,220,140,80,80,0,0,520
+Random Forest,2025,260,140,160,320,0,0,880
+Bagging,2009,220,140,160,80,0,0,600
+Bagging,2010,230,80,40,0,0,0,350
+Bagging,2011,210,100,40,0,0,0,350
+Bagging,2012,200,80,40,0,160,0,480
+Bagging,2013,220,140,40,80,0,0,480
+Bagging,2014,250,80,40,0,0,0,370
+Bagging,2015,230,120,80,160,160,0,750
+Bagging,2016,230,140,160,80,0,0,610
+Bagging,2017,270,140,160,80,0,0,650
+Bagging,2018,220,80,40,0,0,0,340
+Bagging,2019,210,120,120,0,0,0,450
+Bagging,2021,240,120,40,0,160,0,560
+Bagging,2022,230,120,40,80,0,0,470
+Bagging,2023,220,60,40,0,0,0,320
+Bagging,2024,200,80,120,160,0,0,560
+Bagging,2025,240,120,160,240,0,0,760
+HistGradientBoosting,2009,200,60,80,0,0,0,340
+HistGradientBoosting,2010,210,80,40,0,0,0,330
+HistGradientBoosting,2011,220,60,40,0,0,0,320
+HistGradientBoosting,2012,220,120,80,0,0,0,420
+HistGradientBoosting,2013,200,80,40,80,0,0,400
+HistGradientBoosting,2014,250,100,120,0,0,0,470
+HistGradientBoosting,2015,250,140,40,160,160,0,750
+HistGradientBoosting,2016,220,100,0,0,0,0,320
+HistGradientBoosting,2017,280,120,80,0,0,0,480
+HistGradientBoosting,2018,250,140,40,0,0,0,430
+HistGradientBoosting,2019,250,160,160,0,0,0,570
+HistGradientBoosting,2021,230,120,0,0,160,0,510
+HistGradientBoosting,2022,230,140,40,0,0,0,410
+HistGradientBoosting,2023,220,40,0,0,0,0,260
+HistGradientBoosting,2024,240,140,80,80,0,0,540
+HistGradientBoosting,2025,260,140,160,160,0,0,720
+MLP (neural net),2009,210,120,160,160,0,0,650
+MLP (neural net),2010,210,100,0,0,0,0,310
+MLP (neural net),2011,240,60,40,0,0,0,340
+MLP (neural net),2012,220,100,80,80,0,0,480
+MLP (neural net),2013,200,80,0,0,0,0,280
+MLP (neural net),2014,230,80,0,0,0,0,310
+MLP (neural net),2015,240,160,40,0,0,0,440
+MLP (neural net),2016,190,80,0,0,0,0,270
+MLP (neural net),2017,280,80,40,0,0,0,400
+MLP (neural net),2018,250,100,0,0,0,0,350
+MLP (neural net),2019,220,100,80,0,0,0,400
+MLP (neural net),2021,220,80,120,0,160,0,580
+MLP (neural net),2022,260,120,40,80,0,0,500
+MLP (neural net),2023,220,80,40,0,0,0,340
+MLP (neural net),2024,210,60,0,80,0,0,350
+MLP (neural net),2025,230,80,40,160,0,0,510
+SVM (RBF),2009,230,120,160,80,0,0,590
+SVM (RBF),2010,220,100,40,0,0,0,360
+SVM (RBF),2011,220,100,40,0,0,0,360
+SVM (RBF),2012,220,140,80,0,0,0,440
+SVM (RBF),2013,210,140,40,80,0,0,470
+SVM (RBF),2014,230,100,80,0,0,0,410
+SVM (RBF),2015,250,160,80,240,160,0,890
+SVM (RBF),2016,210,80,120,0,0,0,410
+SVM (RBF),2017,280,140,160,80,160,0,820
+SVM (RBF),2018,240,120,0,80,0,0,440
+SVM (RBF),2019,210,120,120,0,0,0,450
+SVM (RBF),2021,220,60,0,0,160,0,440
+SVM (RBF),2022,220,100,80,80,0,0,480
+SVM (RBF),2023,250,100,40,0,0,0,390
+SVM (RBF),2024,220,120,80,80,0,0,500
+SVM (RBF),2025,260,140,160,240,0,0,800
