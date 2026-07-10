@@ -20,11 +20,12 @@ trains on seasons that happened *before* it — no looking into the future. Acro
   **and the in-progress 2026–27 season** using Barttorvik's live/preseason
   ratings (refreshed with `python update_current_season.py`).
 - **Model Accuracy** — walk-forward accuracy by training window, year, and round.
-- **Betting Simulation** — hypothetical P&L at several confidence thresholds,
-  settled two ways: against **real historical closing moneylines** (2008–2019,
-  2021) and against the model's own implied odds (a calibration proxy). Betting
-  the model's confident picks at real prices loses at every threshold — the
-  model has no edge over the closing line. Educational, not betting advice.
+- **Betting Simulation** — hypothetical P&L against **real historical closing
+  lines** (2008–2019, 2021): a confidence-threshold sweep (moneyline vs
+  flip-to-spread vs model-implied), plus a **strategy lab** that bets **value /
+  +EV** spots (where the model's probability beats the price, on either side)
+  with flat vs **fractional-Kelly** staking and compares ROI, drawdown and
+  bankroll curves. Educational, not betting advice.
 - **Custom Metric** — upload your own metric (`YEAR, TEAM, <numeric columns>`) and
   the app retrains with and without it, reporting the accuracy change and the
   metric's **permutation importance** ranked against the built-in features.
@@ -40,7 +41,8 @@ trains on seasons that happened *before* it — no looking into the future. Acro
 | `predict_all_windows.py` | Forecasts the upcoming bracket with every training window → `data/bracket_all_windows.csv`. |
 | `update_current_season.py` | Pulls the in-progress season's Barttorvik ratings into `data/ratings.csv` for the Game Predictor. |
 | `fetch_odds.py` | Downloads & parses real historical sportsbook moneylines → `data/odds.csv`. |
-| `backtest_odds.py` | Settles the model's picks at those real odds (moneyline + flip-to-spread) → `data/betting_simulation_{real,spreadflip}.csv`. |
+| `backtest_odds.py` | Settles the model's picks at those real odds (moneyline + flip-to-spread); also emits the per-game table `data/bet_games.csv`. |
+| `betting_strategies.py` | Strategy lab — value/+EV & Kelly strategies over `bet_games.csv` (imported live by the app). |
 | `data/` | Precomputed results the app loads instantly. |
 | `KenPom Barttorvik.csv` | Source team-season efficiency ratings (2008–2026). |
 | `requirements.txt` | Python dependencies for Streamlit Community Cloud. |
@@ -119,6 +121,15 @@ python backtest_odds.py     # data/betting_simulation_real.csv — P&L
   near-certain moneyline win becomes a ~coin-flip cover (1165–1170 against the
   spread at −200) and you pay the −110 vig on every one. The market has already
   priced the favorite fairly on both markets.
+- **Value / +EV betting** (`betting_strategies.py` over `bet_games.csv`) — the
+  real edge test: bet only where the model's probability beats the price (on
+  either side), varying the staking. Flat +EV turns a *profit* on the longer
+  training windows (up to +12% ROI, concentrated in underdogs and higher-edge
+  spots) — the opposite of the chalk result — **but it doesn't hold up**: it's
+  negative on the short windows, only ~half the individual tournaments win, the
+  model is measurably overconfident on favorites, and fractional-Kelly staking
+  (which trusts the edge sizes) loses on every window and craters the bankroll.
+  Read as a *lead to validate with a better-calibrated model*, not a proven edge.
 
 ## ⚠️ Disclaimer
 

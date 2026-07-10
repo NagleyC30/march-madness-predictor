@@ -12,6 +12,7 @@ import altair as alt
 
 import mm_model as mm
 import game_model as gm
+import betting_strategies as bs
 
 st.set_page_config(
     page_title="March Madness Predictor",
@@ -52,6 +53,20 @@ def load_results():
         path = os.path.join(DATA_DIR, fname)
         out[key] = pd.read_csv(path) if os.path.exists(path) else None
     return out
+
+
+@st.cache_data
+def load_strategy_lab():
+    """Load the per-game predictions table and compute every betting strategy
+    live (cheap post-processing). Returns None if the table isn't built yet."""
+    path = os.path.join(DATA_DIR, "bet_games.csv")
+    if not os.path.exists(path):
+        return None
+    games = bs.load_games(path)
+    summary, equity = bs.run_all(games)
+    slices = pd.concat([bs.run_slices(games, "round"),
+                        bs.run_slices(games, "seed")], ignore_index=True)
+    return {"games": games, "summary": summary, "equity": equity, "slices": slices}
 
 
 @st.cache_data
@@ -940,6 +955,112 @@ elif page == "Betting Simulation":
             st.caption(
                 "Negative ROI across thresholds is expected: betting at fair "
                 "implied odds with no sportsbook edge tends to lose to variance."
+            )
+
+    # ── Strategy lab ─────────────────────────────────────────────
+    lab = load_strategy_lab()
+    if lab is not None:
+        st.divider()
+        st.header("🧪 Strategy lab")
+        st.markdown(
+            "The sweep above bets the model's pick and just varies *how confident* "
+            "it must be. The strategy lab asks the sharper question: decide **per "
+            "game** whether the model's probability beats the **real price** "
+            "(+EV) — on *either* side — and vary **how you stake**. "
+            f"Bankroll **${bs.START_BANKROLL:,.0f}**, flat unit **${bs.FLAT_UNIT:,.0f}**, "
+            f"**{bs.KELLY_FRACTION:g}-Kelly** for the Kelly strategy."
+        )
+        lab_windows = sorted(lab["summary"]["window"].unique())
+        lab_window = st.selectbox(
+            "Model / training window", lab_windows,
+            index=lab_windows.index("all_prior") if "all_prior" in lab_windows else 0,
+            key="lab_window")
+        s = lab["summary"][lab["summary"]["window"] == lab_window]
+
+        disp = s[["strategy", "bets", "win_rate", "roi_pct", "avg_edge_pct",
+                  "final_bankroll", "max_drawdown_pct"]].rename(columns={
+            "strategy": "Strategy", "bets": "Bets", "win_rate": "Win %",
+            "roi_pct": "ROI %", "avg_edge_pct": "Avg edge %",
+            "final_bankroll": "End bankroll ($)", "max_drawdown_pct": "Max drawdown %"})
+        st.dataframe(
+            disp.style.format({"Win %": "{:.1f}", "ROI %": "{:+.1f}",
+                               "Avg edge %": "{:+.1f}", "End bankroll ($)": "{:,.0f}",
+                               "Max drawdown %": "{:.1f}"})
+            .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
+                 else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+                 subset=["ROI %"]),
+            hide_index=True, width="stretch",
+        )
+
+        st.subheader("Bankroll over time")
+        eq = lab["equity"][lab["equity"]["window"] == lab_window].copy()
+        base = alt.Chart(eq).mark_line().encode(
+            x=alt.X("bet:Q", title="Bet number (chronological)"),
+            y=alt.Y("bankroll:Q", title="Bankroll ($)",
+                    scale=alt.Scale(zero=False)),
+            color=alt.Color("strategy:N", title="Strategy"),
+            tooltip=["strategy", "bet", "year",
+                     alt.Tooltip("bankroll:Q", format="$,.0f")],
+        )
+        start_rule = alt.Chart(pd.DataFrame({"y": [bs.START_BANKROLL]})).mark_rule(
+            strokeDash=[4, 4], color="gray").encode(y="y:Q")
+        st.altair_chart((base + start_rule).properties(height=380),
+                        width="stretch")
+        st.caption(
+            "**Avg edge %** is how much the model's probability exceeds the "
+            "de-vigged market price on the bets it places — its *claimed* edge."
+        )
+        st.warning(
+            "**Read this skeptically.** Flat +EV betting turns a profit on the "
+            "longer-training windows — but not the shorter ones, and even there "
+            "only about half the individual tournaments win (a couple of outlier "
+            "years carry it). The model is also measurably **overconfident** on "
+            "favorites, so some of its 'edge' is illusory. The tell: **¼-Kelly**, "
+            "which sizes bets by the claimed edge, loses on every window and "
+            "craters the bankroll — if the edges were real, Kelly would compound "
+            "them, not destroy them. Treat this as a **lead to validate with a "
+            "better-calibrated model**, not a proven way to beat the market."
+        )
+
+        # ── Where does the edge live? (by round / by seed) ──────────
+        sl_all = lab.get("slices")
+        if sl_all is not None and not sl_all.empty:
+            st.subheader("Where does the edge live?")
+            st.markdown(
+                "The Value (+EV, flat) strategy, broken down by the **round** of "
+                "the game and the **seed of the team it backs** — to see whether "
+                "any slice actually beats the closing line, or whether the overall "
+                "profit hides pockets that don't."
+            )
+
+            def _slice_table(dim, dim_label):
+                d = sl_all[(sl_all["window"] == lab_window) &
+                           (sl_all["slice_by"] == dim)]
+                d = d[["slice", "bets", "win_rate", "roi_pct", "avg_edge_pct"]].rename(
+                    columns={"slice": dim_label, "bets": "Bets", "win_rate": "Win %",
+                             "roi_pct": "ROI %", "avg_edge_pct": "Avg edge %"})
+                st.dataframe(
+                    d.style.format({"Win %": "{:.1f}", "ROI %": "{:+.1f}",
+                                    "Avg edge %": "{:+.1f}"})
+                    .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
+                         else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+                         subset=["ROI %"]),
+                    hide_index=True, width="stretch")
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.caption("**By round**")
+                _slice_table("round", "Round")
+            with c2:
+                st.caption("**By seed of the backed team**")
+                _slice_table("seed", "Seed")
+            st.caption(
+                "Read the deep-round rows skeptically — the Final Four and "
+                "Championship slices are only a handful of bets each, so their "
+                "eye-popping ROI is mostly noise. The steadier signal: the edge "
+                "concentrates in the **first round** and on **double-digit-seed "
+                "underdogs**, and evaporates on the favorites — consistent with "
+                "the model being overconfident on chalk."
             )
 
 
