@@ -153,3 +153,149 @@ and re-run `predict_all_windows.py` once Selection Sunday 2027 sets the field.
 backtests cover the full model era, not just through 2021. (Not strictly
 time-gated — a sourcing task that can happen whenever.)
 
+---
+
+**NEW REQUESTS (added 2026-07-10)** — with feasibility notes + a reprioritized
+order. See "REORDERED PLAN" at the bottom for the cascade-aware sequence.
+
+13\. **Rename the project to B.O.B. (Betting on Basketball).** -- **TODO (do as
+part of the branding pass, item 16 — not piecemeal)**
+- Touches every UI surface: `page_title`/`page_icon` in `app.py`, page titles,
+  the Overview copy, README, and chart headers. Cheap individually but spread
+  across many strings.
+- **Cascade rule:** don't rename now and re-theme later — every string the rename
+  touches is a string the theme/logo pass (item 16) also touches. Bundle rename +
+  theme + logo into one branding pass so the chrome is rewritten exactly once.
+
+14\. **"Me vs. the Machine" contest page — my predictions vs. the models'.** For
+every game the model predicts, I also predict; we run an everlasting scoreboard
+of who's better. Show W-L-D for the model and for me, plus how much each of us
+would have made under **every betting strategy** (item 7's lab). Must be
+automated for 2027-forward games not yet played, with a recurring prompt to lock
+my picks *before* tip-off (no score leakage), and I must not see the model's pick
+when I make mine. -- **TODO / partially data-blocked**
+- **Feasibility: yes, with an honor-system caveat.** The head-to-head engine
+  (`game_model`) and the strategy lab already exist; this page is mostly a
+  pick-capture + settle + tally layer on top. The hard part is *integrity*, not
+  modelling.
+- **Slate = a curated weekly set of ~10 games, selected automatically** (must be
+  data-only so it self-runs for 2027-forward). *Gate → score → constrain:*
+  - **Sizing is data-backed (measured on 2023–2025 games.csv + ratings.csv):** a
+    typical regular-season week has ~285–310 D1-vs-D1 games, ~76–84 pass the gate,
+    and **~17–24 are genuinely "good"** (both teams strong *and* competitive).
+    Only ~5/week are both-top-25, so a slate can't be all marquee clashes — the
+    composite is what keeps quality up. **≥10 qualifying games in ~95–100% of
+    weeks**, and the 10th-best game's competitiveness stays high (median
+    0.75–0.90). → **10/week is safe.** Early-Nov / some conf-tourney weeks are
+    thinner: apply a **quality floor** and let the slate shrink below 10 rather
+    than padding with blowouts.
+  - **Eligibility gate (all required):** both teams D1 with current ratings; game
+    not yet played; ≥1 team in the national top ~60 by BARTHAG (kills
+    two-bad-teams games).
+  - **Composite "good matchup" score** (weights are tunable knobs). For a
+    *contest* a slate of blowouts is a bad test (we'd both go 8/8), so
+    **competitiveness is weighted highest**:
+    - **Competitiveness (40%):** `1 − 2·|p − 0.5|`, `p` = model win prob. Pick'em
+      = 1.0; a 90/10 game = 0.2.
+    - **Quality (35%):** reward *both* teams good — `min(BARTHAG_a, BARTHAG_b)`
+      (or inverted avg national rank), so one great + one weak doesn't qualify.
+    - **Salience (25%), additive bonuses:** both ranked top-25; conference/rivalry
+      game; **cross-window model disagreement** (the five windows split); model-
+      vs-market disagreement where odds exist.
+  - **Slate constraints:** ~8 games/week; no team twice in a week; per-day cap;
+    keep a mix of favorites/underdogs (don't collapse to all toss-ups).
+  - In **manual-entry mode** the same score doubles as a "suggest good matchups"
+    helper over whatever games I paste in.
+- **Design rules to keep it honest (commit-then-reveal):**
+  - **Lock before tip-off.** Persist my pick with a timestamp (e.g.
+    `data/contest_picks.csv`, optionally git-committed for an audit trail) and
+    freeze it at the scheduled tip. Settle only after the official final.
+  - **Lock the model's pick at the same time**, from the ratings-as-of that
+    moment — so the model can't be (even accidentally) retrained on a result
+    before the game is scored. No look-ahead for either side.
+  - **Blind entry.** The pick form must not render the model's choice, prob, or
+    the market line until after I submit.
+  - **No score leakage.** The prompt fires from a schedule, not from any view
+    that shows finals; the settle step is the only place scores enter.
+  - **Missed-deadline policy** (pick one): auto-forfeit that game to the model, or
+    drop the game from both records. Decide up front.
+  - **Define the slate:** which games count (all D1? a curated weekly slate?
+    tournament only?) and the tie/"draw" definition — **straight-up basketball
+    games don't draw**, so "draw" only means an **ATS push** on the spread bets;
+    the moneyline W-L has no draws.
+- **Automation:** the recurring "make your picks" prompt can run via the
+  scheduled-tasks / cron infra (or a calendar event). After finals post, a settle
+  job updates both records and re-runs the strategy P&L for the contest slate.
+- **Data dependency:** "games yet to happen in 2027" needs the schedule —
+  `2027_super_sked.csv` is still 404 (same blocker as items 5/11, ~Nov 2026).
+  **Un-blocked path:** ship a **manual-entry mode first** (I paste/enter an
+  upcoming matchup, both sides predict, settle when I enter the final), then wire
+  the auto-schedule feed when it publishes.
+- **Cascade rule:** this page *displays model probabilities and betting P&L*, so
+  Phase-2 calibration/new-models change every number on it. **Build it once,
+  after Phase 2**, or accept re-work.
+
+15\. **"How the models work" learning page.** Explain each classifier —
+RandomForest, Bagging, XGBoost, etc. — what it's doing and why. Assess turning
+the predictor into a **neural network**: how, and what constraints block it. --
+**TODO (best done alongside Phase 2 so it documents real models)**
+- **Feasibility: easy for the explainers, nuanced for the NN.**
+- **Explainer content** can be live, not just prose: feature-importance bars from
+  the trained model, a single rendered decision tree, bagging/boosting
+  animations, a reliability/calibration diagram (already computed). Building it
+  *after* the Phase-2 bake-off means it documents models that actually exist
+  (XGBoost/MLP) instead of hypotheticals — otherwise the page gets written twice.
+- **Neural network — how & constraints:**
+  - **Cheapest real NN = `sklearn.MLPClassifier`**, which is *already on the
+    Phase-2 list (item 8)* and adds **no new dependency** and no scaler change
+    (StandardScaler is already in the pipeline). That's the pragmatic "make it a
+    neural net" path.
+  - **A deep NN (PyTorch/Keras)** is possible but low-upside here: the data is
+    **small tabular** (~34 features; tournament games ≈ dozens/yr, the general
+    game model has more but still modest). On small tabular data, gradient-boosted
+    trees (XGBoost) typically **beat** NNs, and a deep net mainly adds overfitting
+    risk + a heavy deploy dependency (torch wheels) for the Streamlit host.
+  - **Constraints, ranked:** (1) dataset size / overfitting — the real limiter,
+    not tooling; (2) deploy weight if we go beyond sklearn; (3) calibration — NNs
+    are also miscalibrated out of the box, same isotonic/Platt fix as the trees.
+  - **Verdict to record:** add MLP in the bake-off, report it honestly against the
+    trees; treat a full deep-learning rewrite as a labelled experiment, not the
+    default.
+
+16\. **Branding UI: theme selector + human-designed logo (by my gf).** New UI to
+pick a theme and attach the logo. -- **TODO (Phase 3; kick off the logo asset
+now for lead time)**
+- Streamlit theming via `.streamlit/config.toml` + `st.logo()`; a theme selector
+  can swap palettes at runtime. Folds together with the **B.O.B. rename (item
+  13)** and the existing Phase-3 design pass (item 9) into **one branding pass**.
+- **Cascade rules:** (a) do branding **last**, after the contest page (14) and
+  learning page (15) exist, so all pages get themed in one sweep instead of
+  restyling on every new page; (b) but the **logo is an external dependency (gf's
+  design)** with lead time — **request the asset now** even though integration is
+  late. Needs: format (SVG preferred, transparent PNG fallback), light+dark
+  variants, and a square icon crop for `page_icon`/favicon.
+
+---
+
+**REORDERED PLAN (cascade-aware, 2026-07-10)** — sequenced to minimize rework.
+Guiding rule: anything that changes **model probabilities** (calibration, new
+models) ripples into betting numbers, the contest scoreboard, and every prob shown
+— so do model work *before* building new surfaces that display those numbers; and
+do all **branding** (rename + theme + logo) as one final sweep after the new pages
+exist. Start the gf's **logo** now regardless (external lead time).
+
+1. **Finish Phase-1 betting backlog** — by-seed / by-round slices in the strategy
+   lab (small, already scaffolded).
+2. **Phase 2: model bake-off + calibration (item 8)** — the pivotal unblocker.
+   Calibrating/adding models (incl. **MLP** = the "neural net") changes every
+   downstream number, so it comes before the new display pages. *In parallel:
+   email gf the logo spec (item 16).*
+3. **Learning page (item 15)** — write it against the models that now exist.
+4. **Me-vs-Machine contest (item 14)** — build once on calibrated probs. Ship
+   manual-entry mode first; wire the schedule feed when `2027_super_sked.csv`
+   lands (~Nov 2026).
+5. **Branding pass (items 13 + 16 + Phase-3 item 9)** — rename to **B.O.B.**,
+   theme selector, drop in gf's logo; theme every page in one sweep.
+6. **Parked on data** (items 10/11/12): 2027 field, scheduled-games feed, extend
+   odds to 2022–2025.
+
