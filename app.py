@@ -45,6 +45,8 @@ def load_results():
         "bet_real_meta": "betting_real_meta.csv",
         "summary": "window_summary.csv",
         "bracket2026": "bracket_prediction_2026.csv",
+        "bracket_windows": "bracket_all_windows.csv",
+        "bracket_windows_meta": "bracket_all_windows_meta.csv",
         "meta": "meta.csv",
     }.items():
         path = os.path.join(DATA_DIR, fname)
@@ -231,48 +233,121 @@ if page == "Overview":
 # ──────────────────────────────────────────────────────────────
 
 elif page == "Bracket Predictions":
-    st.title("Predicted Bracket — 2026")
-    bracket = results["bracket2026"]
-    if bracket is None:
-        st.warning("No precomputed 2026 bracket found. Run `python precompute.py` first.")
-    else:
+
+    def _round_table(rnd):
+        """Matchup/Pick/Implied-line table for one round of one bracket."""
+        show = rnd.copy()
+        show["Matchup"] = (
+            show["TEAM_HIGH"] + " (#" + show["SEED_HIGH"].astype(int).astype(str)
+            + ")  vs  " + show["TEAM_LOW"] + " (#"
+            + show["SEED_LOW"].astype(int).astype(str) + ")")
+        show["Pick"] = (show["PRED_WINNER"] + " (#"
+                        + show["PRED_SEED"].astype(int).astype(str) + ")")
+        show["Implied line"] = show["IMPLIED_LINE"].apply(lambda v: f"{int(v):+d}")
+        st.dataframe(
+            show[["REGION", "Matchup", "Pick", "Implied line"]]
+            .rename(columns={"REGION": "Region"}),
+            hide_index=True, width="stretch",
+        )
+
+    bw = results["bracket_windows"]
+    bmeta = results["bracket_windows_meta"]
+
+    if bw is not None:
+        year = int(bmeta.iloc[0]["target_year"]) if bmeta is not None \
+            else int(bw["YEAR"].iloc[0])
+        best = bmeta.iloc[0]["best_window"] if bmeta is not None else "all_prior"
+        windows = [w for w in mm.TRAINING_WINDOWS if w in set(bw["WINDOW"])]
+
+        st.title(f"Predicted Bracket — {year}")
+        st.markdown(
+            "Every one of the five **training-window** models applied to the same "
+            f"{year} field. Shorter windows react to recent seasons; `all_prior` "
+            "uses everything. Where they disagree is where the pick is least certain."
+        )
+
+        # ---- Champion & Final Four by model ----
+        champ_all = bw[bw["ROUND"] == "Championship"]
+        f4_all = bw[bw["ROUND"] == "F4"]
+        rows = []
+        for w in windows:
+            c = champ_all[champ_all["WINDOW"] == w]
+            ff = f4_all[f4_all["WINDOW"] == w]
+            ff_teams = sorted(set(ff["TEAM_HIGH"]) | set(ff["TEAM_LOW"]))
+            rows.append({
+                "Training window": w,
+                "Model": c["MODEL"].iloc[0] if not c.empty else "—",
+                "Predicted champion": (
+                    f"{c.iloc[0]['PRED_WINNER']} (#{int(c.iloc[0]['PRED_SEED'])})"
+                    if not c.empty else "—"),
+                "Final Four": ", ".join(ff_teams),
+            })
+        st.subheader("Champion & Final Four by model")
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+        n_champs = champ_all.groupby("WINDOW").first()["PRED_WINNER"].nunique()
+        if n_champs == 1:
+            st.success(f"All five models agree on the champion: "
+                       f"**{champ_all.iloc[0]['PRED_WINNER']}**.")
+        else:
+            st.info(f"The five models name **{n_champs} different champions** — "
+                    "see how each fills the bracket below.")
+
+        # ---- Full bracket for a chosen window ----
+        st.subheader("Full bracket by model")
+        wsel = st.selectbox(
+            "Training window", windows,
+            index=windows.index(best) if best in windows else 0,
+            help="`" + best + "` has the best walk-forward accuracy.")
+        sub = bw[bw["WINDOW"] == wsel]
+        csel = sub[sub["ROUND"] == "Championship"]
+        if not csel.empty:
+            r = csel.iloc[0]
+            st.success(f"### 🏆 {wsel} champion: **{r['PRED_WINNER']}** "
+                       f"(#{int(r['PRED_SEED'])} seed)")
+        st.caption(f"Model: {sub['MODEL'].iloc[0]} · "
+                   f"trained on {int(sub['N_TRAIN_YEARS'].iloc[0])} prior seasons")
+        for code in mm.ALL_ROUND_NAMES:
+            rnd = sub[sub["ROUND"] == code]
+            if rnd.empty:
+                continue
+            with st.expander(f"{round_label(code)}  ({len(rnd)} games)",
+                             expanded=code in ("F4", "Championship")):
+                _round_table(rnd)
+        st.download_button(
+            "⬇️ Download all brackets (CSV)",
+            bw.to_csv(index=False).encode(),
+            "bracket_all_windows.csv", "text/csv",
+        )
+
+    elif results["bracket2026"] is not None:
+        # Fallback: single best-window bracket from precompute.py.
+        bracket = results["bracket2026"]
+        st.title("Predicted Bracket — 2026")
         champ = bracket[bracket["ROUND"] == "Championship"]
         if not champ.empty:
             row = champ.iloc[0]
             st.success(
                 f"### 🏆 Predicted National Champion: **{row['PRED_WINNER']}** "
-                f"(#{int(row['PRED_SEED'])} seed)"
-            )
-
+                f"(#{int(row['PRED_SEED'])} seed)")
         st.caption(
             f"Model: {bracket['MODEL'].iloc[0]} · training window: "
-            f"{bracket['BEST_WINDOW'].iloc[0]}"
-        )
-
+            f"{bracket['BEST_WINDOW'].iloc[0]}  ·  run "
+            "`python predict_all_windows.py` to compare all five windows.")
         for code in mm.ALL_ROUND_NAMES:
             rnd = bracket[bracket["ROUND"] == code]
             if rnd.empty:
                 continue
             with st.expander(f"{round_label(code)}  ({len(rnd)} games)",
                              expanded=code in ("F4", "Championship")):
-                show = rnd.copy()
-                show["Matchup"] = (
-                    show["TEAM_HIGH"] + " (#" + show["SEED_HIGH"].astype(int).astype(str)
-                    + ")  vs  " + show["TEAM_LOW"] + " (#"
-                    + show["SEED_LOW"].astype(int).astype(str) + ")"
-                )
-                show["Pick"] = show["PRED_WINNER"] + " (#" + show["PRED_SEED"].astype(int).astype(str) + ")"
-                show["Implied line"] = show["IMPLIED_LINE"].apply(lambda v: f"{int(v):+d}")
-                st.dataframe(
-                    show[["REGION", "Matchup", "Pick", "Implied line"]]
-                    .rename(columns={"REGION": "Region"}),
-                    hide_index=True, width="stretch",
-                )
+                _round_table(rnd)
         st.download_button(
             "⬇️ Download bracket (CSV)",
             bracket.to_csv(index=False).encode(),
             "bracket_prediction_2026.csv", "text/csv",
         )
+    else:
+        st.warning("No precomputed bracket found. Run "
+                   "`python predict_all_windows.py` first.")
 
 
 # ──────────────────────────────────────────────────────────────

@@ -10,7 +10,9 @@ trains on seasons that happened *before* it — no looking into the future. Acro
 
 ## ✨ Features
 
-- **Bracket Predictions** — the model's full predicted 2026 bracket and champion.
+- **Bracket Predictions** — the upcoming tournament's bracket predicted by **all
+  five training-window models**, with their champions and Final Fours compared
+  side by side, plus each model's full bracket.
 - **Head-to-Head** — pick any two teams from a season for a live prediction with
   win probabilities and an implied moneyline.
 - **Model Accuracy** — walk-forward accuracy by training window, year, and round.
@@ -31,6 +33,7 @@ trains on seasons that happened *before* it — no looking into the future. Acro
 | `app.py` | Streamlit dashboard (the deployed app). |
 | `mm_model.py` | Importable, side-effect-free modeling core. |
 | `precompute.py` | Runs the heavy walk-forward once, writes result CSVs to `data/`. |
+| `predict_all_windows.py` | Forecasts the upcoming bracket with every training window → `data/bracket_all_windows.csv`. |
 | `fetch_odds.py` | Downloads & parses real historical sportsbook moneylines → `data/odds.csv`. |
 | `backtest_odds.py` | Settles the model's picks at those real odds (moneyline + flip-to-spread) → `data/betting_simulation_{real,spreadflip}.csv`. |
 | `data/` | Precomputed results the app loads instantly. |

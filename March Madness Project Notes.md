@@ -48,7 +48,15 @@ Run the experiment after having the model build and test on every year from 2008
 
 - Result: flipping to the spread **doesn't help — it's worse** at 19 of 20 window×threshold combos (~ -5% to -11% ROI vs -2% to -7% for moneyline). The closing spread is efficient: a near-certain moneyline win becomes a ~coin-flip cover (1165–1170 ATS at -200) and you eat the -110 vig every time. The naive "take the points on a huge favorite" intuition doesn't survive contact with real, efficient closing lines. Shown as a third strategy toggle on the **Betting Simulation** page.
 
-4\. Apply each model to the 2027 tournament. 
+4\. Apply each model to the 2027 tournament. -- **IN PROGRESS / blocked on data**
+
+- 2027 field data doesn't exist yet (Selection Sunday is March 2027). The dataset currently ends at the 2026 field, which is the only forecast-eligible target.
+
+- Built `predict_all_windows.py`: applies **all five training-window models** (all_prior / last_1 / last_3 / last_5 / last_10) to the latest forecast field → `data/bracket_all_windows.csv`. It auto-detects the target year, so `python predict_all_windows.py` will predict 2027 the moment that field is added (or `python predict_all_windows.py 2027`).
+
+- Demonstrated on **2026**: all five models agree on the champion (**Duke #1**) and on 31/32 first-round games; they diverge on the deep mid-seed run (Final Four's 3rd/4th spots swing across Arizona/Houston/Florida/Illinois/Nebraska/Purdue). Shown on the **Bracket Predictions** page as a champion+Final-Four-by-model table plus a per-window full bracket.
+
+- TODO when 2027 field is published: re-run `predict_all_windows.py` (and add the 2027 rows to `KenPom Barttorvik.csv`).
 
 5\. Build a current-season predictor for the upcoming year's games: pull the live/preseason Barttorvik ratings for the in-progress 2026–27 season and let the app predict upcoming regular-season and tournament games as they're scheduled (updating as ratings refresh through the season). Extends the general Game Predictor, which currently covers completed seasons 2008–2026.
 
