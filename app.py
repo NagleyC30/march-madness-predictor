@@ -40,6 +40,8 @@ def load_results():
     for key, fname in {
         "wf": "walk_forward_accuracy.csv",
         "bet": "betting_simulation.csv",
+        "bet_real": "betting_simulation_real.csv",
+        "bet_real_meta": "betting_real_meta.csv",
         "summary": "window_summary.csv",
         "bracket2026": "bracket_prediction_2026.csv",
         "meta": "meta.csv",
@@ -161,8 +163,8 @@ if results["meta"] is not None:
 
 st.sidebar.divider()
 st.sidebar.caption(
-    "⚠️ Educational project. Betting figures use model-implied odds as a proxy "
-    "and are **not** a betting recommendation."
+    "⚠️ Educational project. Betting figures — including the real-odds backtest — "
+    "are historical analysis, **not** a betting recommendation."
 )
 
 
@@ -702,46 +704,27 @@ elif page == "Model Accuracy":
 
 elif page == "Betting Simulation":
     st.title("Betting Simulation")
-    st.warning(
-        "Educational only. This uses the **model's own implied odds** as a proxy "
-        "for sportsbook lines, so it measures model calibration — not real-world "
-        "profit. It is not betting advice."
-    )
-    bet = results["bet"]
-    if bet is None:
-        st.warning("No precomputed betting data. Run `python precompute.py` first.")
-    else:
-        st.markdown(
-            "At each **confidence threshold** the model only 'bets' on games where "
-            "its implied moneyline is at least that confident (e.g. `-300` = only "
-            "very strong favorites). $10 per bet."
-        )
 
-        summ = (bet.groupby(["window", "threshold"]).agg(
-            placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
-            net_pnl=("net_pnl", "sum"), wagered=("total_wagered", "sum"),
-        ).reset_index())
-        summ["roi_pct"] = (summ["net_pnl"] / summ["wagered"] * 100).round(1)
-
-        window = st.selectbox("Training window", sorted(summ["window"].unique()),
-                              index=0)
+    def _render_bet_table(summ, window, extra_cols=()):
+        """Threshold P&L table for one training window."""
         wsub = summ[summ["window"] == window].sort_values("threshold")
-
-        disp = wsub[["threshold", "placed", "won", "lost", "net_pnl", "roi_pct"]]
-        disp = disp.rename(columns={
-            "threshold": "Confidence line", "placed": "Bets", "won": "Won",
-            "lost": "Lost", "net_pnl": "Net P&L ($)", "roi_pct": "ROI %"})
+        cols = ["threshold", "placed", "won", "lost", "net_pnl", "roi_pct", *extra_cols]
+        names = {"threshold": "Confidence line", "placed": "Bets", "won": "Won",
+                 "lost": "Lost", "net_pnl": "Net P&L ($)", "roi_pct": "ROI %",
+                 "avg_ml": "Avg real line", "no_odds": "No line"}
+        disp = wsub[cols].rename(columns=names)
         st.dataframe(
-            disp.style.format({"Net P&L ($)": "{:+.2f}", "ROI %": "{:+.1f}"})
+            disp.style.format({"Net P&L ($)": "{:+.2f}", "ROI %": "{:+.1f}",
+                               "Avg real line": "{:+.0f}"}, na_rep="—")
             .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
                  else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
                  subset=["Net P&L ($)", "ROI %"]),
             hide_index=True, width="stretch",
         )
 
-        st.subheader("Cumulative P&L over time")
-        bsub = bet[bet["window"] == window].copy()
-        cum = bsub.sort_values("test_year").copy()
+    def _render_cum_chart(bet, window):
+        """Cumulative P&L by threshold across tournament years."""
+        cum = bet[bet["window"] == window].sort_values("test_year").copy()
         cum["cum_pnl"] = cum.groupby("threshold")["net_pnl"].cumsum()
         cum["threshold"] = cum["threshold"].astype(str)
         line = alt.Chart(cum).mark_line(point=True).encode(
@@ -753,12 +736,78 @@ elif page == "Betting Simulation":
         )
         zero = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(
             strokeDash=[4, 4], color="gray").encode(y="y:Q")
-        st.altair_chart((line + zero).properties(height=350),
-                        width="stretch")
-        st.caption(
-            "Negative ROI across thresholds is expected: betting at fair implied "
-            "odds with no sportsbook edge tends to lose to variance and vig."
+        st.altair_chart((line + zero).properties(height=350), width="stretch")
+
+    bet_real, bet_impl = results["bet_real"], results["bet"]
+    sources = []
+    if bet_real is not None:
+        sources.append("Real sportsbook odds")
+    if bet_impl is not None:
+        sources.append("Model-implied odds (calibration)")
+
+    if not sources:
+        st.warning("No precomputed betting data. Run `python backtest_odds.py` "
+                   "(and `python precompute.py`) first.")
+    else:
+        source = st.radio("Odds source", sources, horizontal=True)
+        st.markdown(
+            "At each **confidence threshold** the model bets $10 on its pick only "
+            "when it is at least that confident (e.g. `-300` = only very strong "
+            "favorites). Higher thresholds → fewer, chalkier bets."
         )
+
+        if source.startswith("Real"):
+            meta = results["bet_real_meta"]
+            yrs = meta.iloc[0]["odds_years"] if meta is not None else "2009–2019, 2021"
+            st.info(
+                "Every bet is settled at the game's **real closing moneyline** "
+                "from the sportsbook archive and against the real result — this is "
+                "actual profit/loss, not a calibration proxy. Tournaments "
+                f"backtested: **{yrs}** (the seasons with published odds and a prior "
+                "season to train on). Bets on games with no matchable line are "
+                "excluded and counted under **No line**."
+            )
+            summ = (bet_real.groupby(["window", "threshold"]).agg(
+                placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
+                net_pnl=("net_pnl", "sum"), wagered=("total_wagered", "sum"),
+                no_odds=("no_odds", "sum"),
+                avg_ml=("avg_ml", "mean"),
+            ).reset_index())
+            summ["roi_pct"] = (summ["net_pnl"] / summ["wagered"] * 100).round(1)
+            summ["avg_ml"] = summ["avg_ml"].round()
+
+            window = st.selectbox("Training window",
+                                  sorted(summ["window"].unique()), index=0)
+            _render_bet_table(summ, window, extra_cols=("avg_ml", "no_odds"))
+            st.subheader("Cumulative P&L over time")
+            _render_cum_chart(bet_real, window)
+            st.caption(
+                "Flat-staking the model's confident picks at real prices is a "
+                "losing game: heavy favorites pay pennies when they win but cost a "
+                "full unit when they don't, and the model has no true edge over the "
+                "closing line. This is exactly the Kelly intuition — on a huge "
+                "favorite there is almost nothing worth betting."
+            )
+        else:
+            st.warning(
+                "This uses the **model's own implied odds** as a proxy for "
+                "sportsbook lines, so it measures calibration — not real profit."
+            )
+            summ = (bet_impl.groupby(["window", "threshold"]).agg(
+                placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
+                net_pnl=("net_pnl", "sum"), wagered=("total_wagered", "sum"),
+            ).reset_index())
+            summ["roi_pct"] = (summ["net_pnl"] / summ["wagered"] * 100).round(1)
+
+            window = st.selectbox("Training window",
+                                  sorted(summ["window"].unique()), index=0)
+            _render_bet_table(summ, window)
+            st.subheader("Cumulative P&L over time")
+            _render_cum_chart(bet_impl, window)
+            st.caption(
+                "Negative ROI across thresholds is expected: betting at fair "
+                "implied odds with no sportsbook edge tends to lose to variance."
+            )
 
 
 # ──────────────────────────────────────────────────────────────

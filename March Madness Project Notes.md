@@ -34,7 +34,13 @@ Run the experiment after having the model build and test on every year from 2008
 
 **NEXT**
 
-3\. If the odds can be tracked down, figure out how much money would have been won using the bracket and testing different spread ranges (i.e., -200, -300, -350, etc.)
+3\. If the odds can be tracked down, figure out how much money would have been won using the bracket and testing different spread ranges (i.e., -200, -300, -350, etc.) -- **COMPLETE**
+
+- Real closing moneylines pulled from the Sportsbook Reviews Online archive (`fetch_data`-style script `fetch_odds.py` → `data/odds.csv`), tournaments 2008–2019 + 2021 (2020 no tourney; 2022+ not published). 100% of tournament teams name-matched.
+
+- `backtest_odds.py` settles the model's walk-forward picks at the real closing line for every game actually played, sweeping the -200/-250/-300/-350 confidence thresholds. Result: **every** training-window × threshold combo loses money (~ -2% to -7% ROI). The "confident" picks are heavy favorites (avg -200 bet is priced near -2800) — they pay pennies on a win and cost a full unit on a loss. No edge over the closing line, exactly the Kelly point from the notes above. (The earlier "~$700 vs -$70" figure was against model-implied odds, not real lines.)
+
+- Shown in the app's **Betting Simulation** page via a "Real sportsbook odds" vs "Model-implied odds" toggle.
 
 4\. Apply each model to the 2027 tournament. 
 
