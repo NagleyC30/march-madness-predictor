@@ -1,0 +1,5 @@
+model,calibrated,games,accuracy,brier,log_loss,ece
+Tournament-only (~1k),isotonic,965,0.8446,0.1084,0.3613,0.0407
+Tournament-only (~1k),raw,965,0.8601,0.1117,0.4216,0.0728
+Full game log (~90k),raw,965,0.7979,0.1404,0.4392,0.0582
+Full game log (~90k),isotonic,965,0.7938,0.1413,0.4402,0.064

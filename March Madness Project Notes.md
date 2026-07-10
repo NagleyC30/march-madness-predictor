@@ -194,10 +194,10 @@ Surface a model-comparison view in the app.
 - **Still TODO / optional in Phase 2:**
   - Optional: run the bake-off across all five windows (currently `all_prior`
     only); consider XGBoost/LightGBM iff a real gain justifies the dep.
-  - **New follow-up (from the overfitting review):** train the classifier on the
-    ~103k regular-season games in `data/games.csv` (the tournament model only sees
-    ~1k tournament games) — the structural fix for overfitting and the real
-    prerequisite for a genuine deep neural net. Log as a post-Phase-2 item.
+  - **Follow-up (from the overfitting review) — DONE & REFUTED (2026-07-10):**
+    training on the ~90k regular-season games made tournament prediction *worse*,
+    not better (domain shift). See "NEXT SESSION" item 1 and the Model Bake-off
+    page's "Does more training data help?" section. `regseason_bakeoff.py`.
 
 ---
 
@@ -418,13 +418,23 @@ The whole reordered plan (items 1–5) is **shipped and merged to `main`** (PRs
 #2–#6). The app is renamed **B.O.B.** Everything left is data-gated or external —
 concrete resumable actions, roughly in order of "can do now" → "waits on data":
 
-1. **Biggest modelling lever (no blocker) — train the tournament model on the
-   ~103k regular-season games** in `data/games.csv`. Today the tournament model
-   (`mm_model`) only sees ~1k tournament games; `game_model` already uses the big
-   log. This is the structural fix for the overfitting the bake-off exposed (esp.
-   the MLP, log-loss 1.69) and the real prerequisite for a genuine deep neural
-   net. Everything downstream (betting numbers, contest, bake-off) would re-run
-   off the better probabilities — treat like Phase 2's cascade.
+1. **Train on the ~103k regular-season games — TESTED, and it DIDN'T help
+   (2026-07-10).** `regseason_bakeoff.py` ran the controlled experiment: same
+   feature space (ratings.csv) + same model (HistGradientBoosting) + same NCAA
+   test games, only the training set changes. Training on the **~90k-game log
+   made tournament prediction WORSE** than tournament-only (~1k): accuracy
+   **0.80 vs 0.86**, worse Brier (0.140 vs 0.112) and log-loss. Cause: **domain
+   shift** — regular-season games (blowouts, home courts, mismatches) are a
+   different distribution, so the extra volume dilutes the tournament signal.
+   *More data only helps on-distribution.* (Both regimes share ratings.csv
+   season-aggregate leakage, so absolute numbers are optimistic; the relative
+   result — the point — holds.) Shown on the **Model Bake-off** page ("Does more
+   training data help?"). → The "just add data / build a deep net" idea is
+   **downgraded**: a real deep net would need *on-distribution* data at scale
+   (many seasons of neutral-site games between tournament teams), which we lack.
+   Open follow-ups if revisited: mix a little regular-season data (domain
+   weighting) rather than all of it; or re-run point-in-time (no leakage) for
+   clean absolute numbers.
 2. **Drop in the real logo** whenever gf's asset is ready: add
    `assets/logo.svg`/`.png` + `assets/icon.svg`/`.png` per `assets/README.md`;
    they auto-override the placeholders, no code change.
