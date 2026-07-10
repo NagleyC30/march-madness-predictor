@@ -70,6 +70,20 @@ def load_strategy_lab():
 
 
 @st.cache_data
+def load_bakeoff():
+    """Load the precomputed model bake-off (model_bakeoff.py). Returns None if it
+    hasn't been generated yet."""
+    s_path = os.path.join(DATA_DIR, "model_bakeoff_summary.csv")
+    r_path = os.path.join(DATA_DIR, "model_bakeoff_reliability.csv")
+    if not (os.path.exists(s_path) and os.path.exists(r_path)):
+        return None
+    out = {"summary": pd.read_csv(s_path), "reliability": pd.read_csv(r_path)}
+    m_path = os.path.join(DATA_DIR, "model_bakeoff_meta.csv")
+    out["meta"] = pd.read_csv(m_path).iloc[0] if os.path.exists(m_path) else None
+    return out
+
+
+@st.cache_data
 def get_matchups():
     df, _ = load_raw()
     rows, years = mm.build_all_matchups(df)
@@ -167,8 +181,8 @@ st.sidebar.caption(
 page = st.sidebar.radio(
     "Navigate",
     ["Overview", "Bracket Predictions", "Head-to-Head", "Game Predictor",
-     "Backtest & Calibration", "Model Accuracy", "Betting Simulation",
-     "Custom Metric", "Data Explorer"],
+     "Backtest & Calibration", "Model Accuracy", "Model Bake-off",
+     "Betting Simulation", "Custom Metric", "Data Explorer"],
 )
 
 if results["meta"] is not None:
@@ -806,6 +820,112 @@ elif page == "Model Accuracy":
         st.caption(
             "Early rounds (more games, bigger seed gaps) are easiest; later "
             "rounds have few samples so accuracy is noisier."
+        )
+
+
+# ──────────────────────────────────────────────────────────────
+# PAGE: MODEL BAKE-OFF
+# ──────────────────────────────────────────────────────────────
+
+elif page == "Model Bake-off":
+    st.title("Model Bake-off")
+    bake = load_bakeoff()
+    if bake is None:
+        st.info(
+            "The model bake-off hasn't been generated yet. Run "
+            "`python model_bakeoff.py` to build it."
+        )
+    else:
+        win = bake["meta"]["window"] if bake["meta"] is not None else "all_prior"
+        st.markdown(
+            "The tournament model picks between Random Forest and Bagging on "
+            "cross-validated **accuracy**. But the betting work showed the model "
+            "is **overconfident** — its *picks* can be fine while its "
+            "*probabilities* are wrong, and accuracy can't see that. This bakes a "
+            "wider roster of classifiers (all scikit-learn, no new dependency) "
+            "against each other on **probability quality** — Brier score, "
+            "log-loss and calibration error — and tests whether post-hoc "
+            "**isotonic calibration** fixes the overconfidence.\n\n"
+            f"Walk-forward from 2009, training window **{win}**. Metrics pooled "
+            "over every actual tournament game."
+        )
+
+        summ = bake["summary"].copy()
+        best = summ.sort_values("brier").iloc[0]
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Best Brier score", f"{best['brier']:.4f}",
+                  f"{best['model']} ({best['calibrated']})")
+        raw_ll = summ[summ["calibrated"] == "raw"]["log_loss"].mean()
+        cal_ll = summ[summ["calibrated"] == "isotonic"]["log_loss"].mean()
+        c2.metric("Avg log-loss, raw → calibrated",
+                  f"{raw_ll:.3f} → {cal_ll:.3f}",
+                  f"{(cal_ll - raw_ll):+.3f}", delta_color="inverse")
+        c3.metric("Accuracy spread (all variants)",
+                  f"{summ['accuracy'].min():.3f}–{summ['accuracy'].max():.3f}",
+                  "picks barely differ")
+
+        st.subheader("Every model, ranked by Brier score")
+        st.caption("Lower Brier / log-loss / ECE = better-calibrated probabilities. "
+                   "**ECE** is the average gap between confidence and reality.")
+        disp = summ.rename(columns={
+            "model": "Model", "calibrated": "Calibration", "games": "Games",
+            "accuracy": "Accuracy", "brier": "Brier", "log_loss": "Log-loss",
+            "ece": "ECE"})
+
+        def _shade_low_good(col):
+            """Green (best/low) → red (worst/high) shading, no matplotlib."""
+            lo, hi = float(col.min()), float(col.max())
+            rng = (hi - lo) or 1.0
+            out = []
+            for v in col:
+                t = (float(v) - lo) / rng
+                r = int(46 + (214 - 46) * t)
+                g = int(160 + (39 - 160) * t)
+                b = int(44 + (40 - 44) * t)
+                out.append(f"background-color: rgba({r},{g},{b},0.25)")
+            return out
+
+        st.dataframe(
+            disp.style.format({"Accuracy": "{:.3f}", "Brier": "{:.4f}",
+                               "Log-loss": "{:.4f}", "ECE": "{:.4f}"})
+            .apply(_shade_low_good, subset=["Brier", "Log-loss", "ECE"]),
+            hide_index=True, width="stretch",
+        )
+
+        st.subheader("Reliability — is a stated 70% really a 70%?")
+        rel = bake["reliability"]
+        model_pick = st.selectbox("Model", sorted(rel["model"].unique()),
+                                  index=sorted(rel["model"].unique()).index(best["model"])
+                                  if best["model"] in set(rel["model"]) else 0)
+        rsub = rel[rel["model"] == model_pick].copy()
+        rsub["Calibration"] = rsub["calibrated"]
+        diag = pd.DataFrame({"x": [0, 1], "y": [0, 1]})
+        line = alt.Chart(rsub).mark_line(point=True).encode(
+            x=alt.X("mean_pred:Q", title="Model's predicted probability",
+                    scale=alt.Scale(domain=[0, 1])),
+            y=alt.Y("obs_freq:Q", title="Actual win frequency",
+                    scale=alt.Scale(domain=[0, 1])),
+            color=alt.Color("Calibration:N"),
+            tooltip=["Calibration", alt.Tooltip("mean_pred:Q", format=".2f"),
+                     alt.Tooltip("obs_freq:Q", format=".2f"), "count"],
+        )
+        perfect = alt.Chart(diag).mark_line(strokeDash=[4, 4], color="gray").encode(
+            x="x:Q", y="y:Q")
+        st.altair_chart((perfect + line).properties(height=400), width="stretch")
+        st.caption(
+            "The dashed line is perfect calibration. Points **below** it mean the "
+            "model is overconfident (it says 80% but wins less often); calibration "
+            "should pull the curve toward the diagonal."
+        )
+        st.info(
+            "**Takeaway.** The models barely differ on *accuracy*, but a lot on "
+            "*calibration*: raw boosting and the MLP (a small neural net) are badly "
+            "overconfident on this small, tabular dataset — the MLP is the worst raw "
+            "model — while Random Forest is already well-calibrated because bagging "
+            "averages its trees' votes. **Isotonic calibration** sharply improves the "
+            "overconfident models. Next: feed these calibrated probabilities back "
+            "into the betting backtest and see whether the +EV edges survive."
         )
 
 

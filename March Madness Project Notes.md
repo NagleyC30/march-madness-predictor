@@ -138,6 +138,34 @@ optionally **XGBoost/LightGBM** (weigh the extra deploy dependency). Compare on:
   across 2009–2025) — a concrete "which model fills the best bracket" metric.
 Surface a model-comparison view in the app.
 
+- **Bake-off + calibration — DONE (2026-07-10).** New `model_bakeoff.py`
+  walk-forwards (window `all_prior`, 2009+) a **sklearn-only** roster —
+  Logistic Regression, Random Forest, Bagging, HistGradientBoosting, **MLP (the
+  "neural net")**, SVM — producing one out-of-sample P(high-seed-wins) per real
+  tournament game, plus an **isotonic-calibrated** variant of each. Writes
+  `data/model_bakeoff_{summary,reliability,meta}.csv`; new **Model Bake-off**
+  page (metrics table shaded by Brier/log-loss/ECE + a raw-vs-calibrated
+  reliability diagram). No new deploy dependency (avoided matplotlib — the
+  Styler shading is a hand-rolled green→red `.apply`).
+- **Findings (pooled over 16 tournaments):**
+  - **Accuracy is nearly flat (0.66–0.72)** across all 12 variants — accuracy
+    can't tell these apart, exactly why probabilistic metrics are needed.
+  - **Overconfidence is real and quantified.** Raw HistGradientBoosting ECE
+    **0.187**, raw **MLP the worst** (ECE **0.270**, log-loss **1.69** — classic
+    small-tabular-data overfitting). Isotonic calibration slashes both (HGB→0.025,
+    MLP→0.036); avg log-loss over the roster **0.841 → 0.596** with calibration.
+  - **Random Forest raw is already the best-calibrated** (Brier **0.192**) —
+    bagging averages its trees' votes. Nuance: isotonic *slightly hurts* RF
+    (0.192→0.196) — calibration isn't free on an already-calibrated model with
+    limited data.
+- **Still TODO in Phase 2 (next sub-steps):**
+  - **Feed calibrated probs back into the betting backtest** — the payoff
+    question: do the +EV edges (item 7) survive once the model is calibrated?
+    (Requires re-emitting `bet_games.csv`-style probs per model/variant.)
+  - **Bracket-pool points** (10/20/40/80/160/320-by-round) per model.
+  - Optional: run the bake-off across all five windows (currently `all_prior`
+    only); consider XGBoost/LightGBM iff a real gain justifies the dep.
+
 ---
 
 **PHASE 3 — UI / UX polish (make it nice for people to use).**
@@ -299,6 +327,10 @@ exist. Start the gf's **logo** now regardless (external lead time).
    Calibrating/adding models (incl. **MLP** = the "neural net") changes every
    downstream number, so it comes before the new display pages. *In parallel:
    email gf the logo spec (item 16).*
+   - **Sub-step a — bake-off + calibration metrics + app page: DONE (2026-07-10).**
+   - **Sub-step b — calibrated probs → betting backtest (do next):** the payoff
+     test of whether the +EV edges survive calibration.
+   - **Sub-step c — bracket-pool points per model.**
 3. **Learning page (item 15)** — write it against the models that now exist.
 4. **Me-vs-Machine contest (item 14)** — build once on calibrated probs. Ship
    manual-entry mode first; wire the schedule feed when `2027_super_sked.csv`
