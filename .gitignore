@@ -20,6 +20,11 @@ data/games.csv
 data/games_pit.csv
 data/timemachine/
 
+# Raw sportsbook xlsx cache (regenerate with: python fetch_odds.py).
+# The parsed data/odds.csv IS committed so the backtest stays reproducible even
+# if the upstream archive disappears.
+data/odds_cache/
+
 # OS / editor
 .DS_Store
 Thumbs.db

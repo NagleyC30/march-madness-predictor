@@ -40,8 +40,13 @@ def load_results():
     for key, fname in {
         "wf": "walk_forward_accuracy.csv",
         "bet": "betting_simulation.csv",
+        "bet_real": "betting_simulation_real.csv",
+        "bet_flip": "betting_simulation_spreadflip.csv",
+        "bet_real_meta": "betting_real_meta.csv",
         "summary": "window_summary.csv",
         "bracket2026": "bracket_prediction_2026.csv",
+        "bracket_windows": "bracket_all_windows.csv",
+        "bracket_windows_meta": "bracket_all_windows_meta.csv",
         "meta": "meta.csv",
     }.items():
         path = os.path.join(DATA_DIR, fname)
@@ -161,8 +166,8 @@ if results["meta"] is not None:
 
 st.sidebar.divider()
 st.sidebar.caption(
-    "⚠️ Educational project. Betting figures use model-implied odds as a proxy "
-    "and are **not** a betting recommendation."
+    "⚠️ Educational project. Betting figures — including the real-odds backtest — "
+    "are historical analysis, **not** a betting recommendation."
 )
 
 
@@ -228,48 +233,121 @@ if page == "Overview":
 # ──────────────────────────────────────────────────────────────
 
 elif page == "Bracket Predictions":
-    st.title("Predicted Bracket — 2026")
-    bracket = results["bracket2026"]
-    if bracket is None:
-        st.warning("No precomputed 2026 bracket found. Run `python precompute.py` first.")
-    else:
+
+    def _round_table(rnd):
+        """Matchup/Pick/Implied-line table for one round of one bracket."""
+        show = rnd.copy()
+        show["Matchup"] = (
+            show["TEAM_HIGH"] + " (#" + show["SEED_HIGH"].astype(int).astype(str)
+            + ")  vs  " + show["TEAM_LOW"] + " (#"
+            + show["SEED_LOW"].astype(int).astype(str) + ")")
+        show["Pick"] = (show["PRED_WINNER"] + " (#"
+                        + show["PRED_SEED"].astype(int).astype(str) + ")")
+        show["Implied line"] = show["IMPLIED_LINE"].apply(lambda v: f"{int(v):+d}")
+        st.dataframe(
+            show[["REGION", "Matchup", "Pick", "Implied line"]]
+            .rename(columns={"REGION": "Region"}),
+            hide_index=True, width="stretch",
+        )
+
+    bw = results["bracket_windows"]
+    bmeta = results["bracket_windows_meta"]
+
+    if bw is not None:
+        year = int(bmeta.iloc[0]["target_year"]) if bmeta is not None \
+            else int(bw["YEAR"].iloc[0])
+        best = bmeta.iloc[0]["best_window"] if bmeta is not None else "all_prior"
+        windows = [w for w in mm.TRAINING_WINDOWS if w in set(bw["WINDOW"])]
+
+        st.title(f"Predicted Bracket — {year}")
+        st.markdown(
+            "Every one of the five **training-window** models applied to the same "
+            f"{year} field. Shorter windows react to recent seasons; `all_prior` "
+            "uses everything. Where they disagree is where the pick is least certain."
+        )
+
+        # ---- Champion & Final Four by model ----
+        champ_all = bw[bw["ROUND"] == "Championship"]
+        f4_all = bw[bw["ROUND"] == "F4"]
+        rows = []
+        for w in windows:
+            c = champ_all[champ_all["WINDOW"] == w]
+            ff = f4_all[f4_all["WINDOW"] == w]
+            ff_teams = sorted(set(ff["TEAM_HIGH"]) | set(ff["TEAM_LOW"]))
+            rows.append({
+                "Training window": w,
+                "Model": c["MODEL"].iloc[0] if not c.empty else "—",
+                "Predicted champion": (
+                    f"{c.iloc[0]['PRED_WINNER']} (#{int(c.iloc[0]['PRED_SEED'])})"
+                    if not c.empty else "—"),
+                "Final Four": ", ".join(ff_teams),
+            })
+        st.subheader("Champion & Final Four by model")
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+        n_champs = champ_all.groupby("WINDOW").first()["PRED_WINNER"].nunique()
+        if n_champs == 1:
+            st.success(f"All five models agree on the champion: "
+                       f"**{champ_all.iloc[0]['PRED_WINNER']}**.")
+        else:
+            st.info(f"The five models name **{n_champs} different champions** — "
+                    "see how each fills the bracket below.")
+
+        # ---- Full bracket for a chosen window ----
+        st.subheader("Full bracket by model")
+        wsel = st.selectbox(
+            "Training window", windows,
+            index=windows.index(best) if best in windows else 0,
+            help="`" + best + "` has the best walk-forward accuracy.")
+        sub = bw[bw["WINDOW"] == wsel]
+        csel = sub[sub["ROUND"] == "Championship"]
+        if not csel.empty:
+            r = csel.iloc[0]
+            st.success(f"### 🏆 {wsel} champion: **{r['PRED_WINNER']}** "
+                       f"(#{int(r['PRED_SEED'])} seed)")
+        st.caption(f"Model: {sub['MODEL'].iloc[0]} · "
+                   f"trained on {int(sub['N_TRAIN_YEARS'].iloc[0])} prior seasons")
+        for code in mm.ALL_ROUND_NAMES:
+            rnd = sub[sub["ROUND"] == code]
+            if rnd.empty:
+                continue
+            with st.expander(f"{round_label(code)}  ({len(rnd)} games)",
+                             expanded=code in ("F4", "Championship")):
+                _round_table(rnd)
+        st.download_button(
+            "⬇️ Download all brackets (CSV)",
+            bw.to_csv(index=False).encode(),
+            "bracket_all_windows.csv", "text/csv",
+        )
+
+    elif results["bracket2026"] is not None:
+        # Fallback: single best-window bracket from precompute.py.
+        bracket = results["bracket2026"]
+        st.title("Predicted Bracket — 2026")
         champ = bracket[bracket["ROUND"] == "Championship"]
         if not champ.empty:
             row = champ.iloc[0]
             st.success(
                 f"### 🏆 Predicted National Champion: **{row['PRED_WINNER']}** "
-                f"(#{int(row['PRED_SEED'])} seed)"
-            )
-
+                f"(#{int(row['PRED_SEED'])} seed)")
         st.caption(
             f"Model: {bracket['MODEL'].iloc[0]} · training window: "
-            f"{bracket['BEST_WINDOW'].iloc[0]}"
-        )
-
+            f"{bracket['BEST_WINDOW'].iloc[0]}  ·  run "
+            "`python predict_all_windows.py` to compare all five windows.")
         for code in mm.ALL_ROUND_NAMES:
             rnd = bracket[bracket["ROUND"] == code]
             if rnd.empty:
                 continue
             with st.expander(f"{round_label(code)}  ({len(rnd)} games)",
                              expanded=code in ("F4", "Championship")):
-                show = rnd.copy()
-                show["Matchup"] = (
-                    show["TEAM_HIGH"] + " (#" + show["SEED_HIGH"].astype(int).astype(str)
-                    + ")  vs  " + show["TEAM_LOW"] + " (#"
-                    + show["SEED_LOW"].astype(int).astype(str) + ")"
-                )
-                show["Pick"] = show["PRED_WINNER"] + " (#" + show["PRED_SEED"].astype(int).astype(str) + ")"
-                show["Implied line"] = show["IMPLIED_LINE"].apply(lambda v: f"{int(v):+d}")
-                st.dataframe(
-                    show[["REGION", "Matchup", "Pick", "Implied line"]]
-                    .rename(columns={"REGION": "Region"}),
-                    hide_index=True, width="stretch",
-                )
+                _round_table(rnd)
         st.download_button(
             "⬇️ Download bracket (CSV)",
             bracket.to_csv(index=False).encode(),
             "bracket_prediction_2026.csv", "text/csv",
         )
+    else:
+        st.warning("No precomputed bracket found. Run "
+                   "`python predict_all_windows.py` first.")
 
 
 # ──────────────────────────────────────────────────────────────
@@ -357,10 +435,11 @@ elif page == "Head-to-Head":
 elif page == "Game Predictor":
     st.title("Game Predictor")
     st.markdown(
-        "Predict **any** college-basketball game — regular season or tournament. "
-        "Pick a season and two teams, choose who's at home, and the model gives "
-        "each side's win probability. It's trained on **every D1 game since 2008** "
-        "(~100k games) using Barttorvik efficiency ratings plus home court."
+        "Predict **any** college-basketball game — regular season or tournament, "
+        "including the **in-progress season**. Pick a season and two teams, choose "
+        "who's at home, and the model gives each side's win probability. It's "
+        "trained on **every D1 game since 2008** (~100k games) using Barttorvik "
+        "efficiency ratings plus home court."
     )
 
     artifact, ratings = load_game_predictor()
@@ -375,10 +454,29 @@ elif page == "Game Predictor":
         meta = artifact["meta"]
         features = meta["features"]
         seasons = sorted(ratings["YEAR"].unique(), reverse=True)
+        # Any season beyond the model's training range is the in-progress one —
+        # its ratings are Barttorvik's live/preseason projections, not final.
+        in_progress_year = (seasons[0] if seasons and seasons[0] > meta["year_max"]
+                            else None)
+
+        def _season_label(y):
+            return f"{y} — in progress" if y == in_progress_year else str(y)
 
         c1, c2 = st.columns([1, 2])
-        season = c1.selectbox("Season", seasons, index=0)
+        season = c1.selectbox("Season", seasons, index=0,
+                              format_func=_season_label)
         ryear = ratings[ratings["YEAR"] == season]
+
+        if season == in_progress_year:
+            st.info(
+                f"**{season - 1}-{str(season)[-2:]} is in progress.** These are "
+                "Barttorvik's live/preseason projected ratings, which refresh as "
+                "games are played — re-run `python update_current_season.py` to pull "
+                "the latest. The model itself is unchanged (trained on completed "
+                f"seasons through {meta['year_max']}); it's forecasting from the new "
+                "season's ratings. Head-to-head works now; game-by-game schedule "
+                "prediction will follow once Barttorvik publishes the schedule."
+            )
         teams = sorted(ryear["TEAM"].unique())
 
         c3, c4 = st.columns(2)
@@ -702,46 +800,31 @@ elif page == "Model Accuracy":
 
 elif page == "Betting Simulation":
     st.title("Betting Simulation")
-    st.warning(
-        "Educational only. This uses the **model's own implied odds** as a proxy "
-        "for sportsbook lines, so it measures model calibration — not real-world "
-        "profit. It is not betting advice."
-    )
-    bet = results["bet"]
-    if bet is None:
-        st.warning("No precomputed betting data. Run `python precompute.py` first.")
-    else:
-        st.markdown(
-            "At each **confidence threshold** the model only 'bets' on games where "
-            "its implied moneyline is at least that confident (e.g. `-300` = only "
-            "very strong favorites). $10 per bet."
-        )
 
-        summ = (bet.groupby(["window", "threshold"]).agg(
-            placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
-            net_pnl=("net_pnl", "sum"), wagered=("total_wagered", "sum"),
-        ).reset_index())
-        summ["roi_pct"] = (summ["net_pnl"] / summ["wagered"] * 100).round(1)
-
-        window = st.selectbox("Training window", sorted(summ["window"].unique()),
-                              index=0)
+    def _render_bet_table(summ, window, extra_cols=()):
+        """Threshold P&L table for one training window."""
         wsub = summ[summ["window"] == window].sort_values("threshold")
-
-        disp = wsub[["threshold", "placed", "won", "lost", "net_pnl", "roi_pct"]]
-        disp = disp.rename(columns={
-            "threshold": "Confidence line", "placed": "Bets", "won": "Won",
-            "lost": "Lost", "net_pnl": "Net P&L ($)", "roi_pct": "ROI %"})
+        base = ["threshold", "placed", "won", "lost"]
+        if "push" in extra_cols:
+            base.append("push")
+        cols = base + ["net_pnl", "roi_pct", *(c for c in extra_cols if c != "push")]
+        names = {"threshold": "Confidence line", "placed": "Bets", "won": "Won",
+                 "lost": "Lost", "push": "Push", "net_pnl": "Net P&L ($)",
+                 "roi_pct": "ROI %", "avg_ml": "Avg real line", "no_odds": "No line",
+                 "spread_bets": "Spread bets", "ml_bets": "ML bets"}
+        disp = wsub[cols].rename(columns=names)
         st.dataframe(
-            disp.style.format({"Net P&L ($)": "{:+.2f}", "ROI %": "{:+.1f}"})
+            disp.style.format({"Net P&L ($)": "{:+.2f}", "ROI %": "{:+.1f}",
+                               "Avg real line": "{:+.0f}"}, na_rep="—")
             .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
                  else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
                  subset=["Net P&L ($)", "ROI %"]),
             hide_index=True, width="stretch",
         )
 
-        st.subheader("Cumulative P&L over time")
-        bsub = bet[bet["window"] == window].copy()
-        cum = bsub.sort_values("test_year").copy()
+    def _render_cum_chart(bet, window):
+        """Cumulative P&L by threshold across tournament years."""
+        cum = bet[bet["window"] == window].sort_values("test_year").copy()
         cum["cum_pnl"] = cum.groupby("threshold")["net_pnl"].cumsum()
         cum["threshold"] = cum["threshold"].astype(str)
         line = alt.Chart(cum).mark_line(point=True).encode(
@@ -753,12 +836,111 @@ elif page == "Betting Simulation":
         )
         zero = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(
             strokeDash=[4, 4], color="gray").encode(y="y:Q")
-        st.altair_chart((line + zero).properties(height=350),
-                        width="stretch")
-        st.caption(
-            "Negative ROI across thresholds is expected: betting at fair implied "
-            "odds with no sportsbook edge tends to lose to variance and vig."
+        st.altair_chart((line + zero).properties(height=350), width="stretch")
+
+    bet_real, bet_flip, bet_impl = (
+        results["bet_real"], results["bet_flip"], results["bet"])
+    sources = []
+    if bet_real is not None:
+        sources.append("Real odds — moneyline")
+    if bet_flip is not None:
+        sources.append("Real odds — flip chalk to spread")
+    if bet_impl is not None:
+        sources.append("Model-implied odds (calibration)")
+
+    if not sources:
+        st.warning("No precomputed betting data. Run `python backtest_odds.py` "
+                   "(and `python precompute.py`) first.")
+    else:
+        source = st.radio("Strategy", sources, horizontal=True)
+        st.markdown(
+            "At each **confidence threshold** the model bets $10 on its pick only "
+            "when it is at least that confident (e.g. `-300` = only very strong "
+            "favorites). Higher thresholds → fewer, chalkier bets."
         )
+        meta = results["bet_real_meta"]
+        yrs = meta.iloc[0]["odds_years"] if meta is not None else "2009–2019, 2021"
+
+        if source == "Real odds — moneyline":
+            st.info(
+                "Every bet is settled at the game's **real closing moneyline** "
+                "from the sportsbook archive and against the real result — this is "
+                "actual profit/loss, not a calibration proxy. Tournaments "
+                f"backtested: **{yrs}** (the seasons with published odds and a prior "
+                "season to train on). Bets on games with no matchable line are "
+                "excluded and counted under **No line**."
+            )
+            summ = (bet_real.groupby(["window", "threshold"]).agg(
+                placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
+                net_pnl=("net_pnl", "sum"), wagered=("total_wagered", "sum"),
+                no_odds=("no_odds", "sum"),
+                avg_ml=("avg_ml", "mean"),
+            ).reset_index())
+            summ["roi_pct"] = (summ["net_pnl"] / summ["wagered"] * 100).round(1)
+            summ["avg_ml"] = summ["avg_ml"].round()
+
+            window = st.selectbox("Training window",
+                                  sorted(summ["window"].unique()), index=0)
+            _render_bet_table(summ, window, extra_cols=("avg_ml", "no_odds"))
+            st.subheader("Cumulative P&L over time")
+            _render_cum_chart(bet_real, window)
+            st.caption(
+                "Flat-staking the model's confident picks at real prices is a "
+                "losing game: heavy favorites pay pennies when they win but cost a "
+                "full unit when they don't, and the model has no true edge over the "
+                "closing line. This is exactly the Kelly intuition — on a huge "
+                "favorite there is almost nothing worth betting."
+            )
+        elif source == "Real odds — flip chalk to spread":
+            st.info(
+                "Same picks and thresholds, but when the pick's **real moneyline is "
+                "shorter than the threshold** (heavy chalk that pays pennies), the "
+                "bet is placed on the **real point spread at −110** instead — the "
+                "'take the points on a huge favorite' idea. Softer lines still bet "
+                "the moneyline. **Spread bets** / **ML bets** show the split; "
+                "**Push** = the favorite landed exactly on the number."
+            )
+            summ = (bet_flip.groupby(["window", "threshold"]).agg(
+                placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
+                push=("push", "sum"), net_pnl=("net_pnl", "sum"),
+                wagered=("total_wagered", "sum"),
+                spread_bets=("spread_bets", "sum"), ml_bets=("ml_bets", "sum"),
+            ).reset_index())
+            summ["roi_pct"] = (summ["net_pnl"] / summ["wagered"] * 100).round(1)
+
+            window = st.selectbox("Training window",
+                                  sorted(summ["window"].unique()), index=0)
+            _render_bet_table(summ, window,
+                              extra_cols=("push", "spread_bets", "ml_bets"))
+            st.subheader("Cumulative P&L over time")
+            _render_cum_chart(bet_flip, window)
+            st.caption(
+                "Flipping to the spread doesn't rescue it — arguably makes it "
+                "worse. The closing spread is efficient, so a near-certain "
+                "moneyline win becomes a ~coin-flip cover, and you pay −110 vig on "
+                "each one. The market has already priced the favorite fairly on "
+                "both the moneyline and the spread."
+            )
+        else:
+            st.warning(
+                "This uses the **model's own implied odds** as a proxy for "
+                "sportsbook lines, so it measures calibration — not real profit."
+            )
+            summ = (bet_impl.groupby(["window", "threshold"]).agg(
+                placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
+                net_pnl=("net_pnl", "sum"), wagered=("total_wagered", "sum"),
+            ).reset_index())
+            summ["roi_pct"] = (summ["net_pnl"] / summ["wagered"] * 100).round(1)
+
+            window = st.selectbox("Training window",
+                                  sorted(summ["window"].unique()), index=0)
+            _render_bet_table(summ, window)
+            st.subheader("Cumulative P&L over time")
+            _render_cum_chart(bet_impl, window)
+            st.caption(
+                "Negative ROI across thresholds is expected: betting at fair "
+                "implied odds with no sportsbook edge tends to lose to variance."
+            )
 
 
 # ──────────────────────────────────────────────────────────────
