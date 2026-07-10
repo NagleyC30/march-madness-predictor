@@ -58,5 +58,11 @@ Run the experiment after having the model build and test on every year from 2008
 
 - TODO when 2027 field is published: re-run `predict_all_windows.py` (and add the 2027 rows to `KenPom Barttorvik.csv`).
 
-5\. Build a current-season predictor for the upcoming year's games: pull the live/preseason Barttorvik ratings for the in-progress 2026–27 season and let the app predict upcoming regular-season and tournament games as they're scheduled (updating as ratings refresh through the season). Extends the general Game Predictor, which currently covers completed seasons 2008–2026.
+5\. Build a current-season predictor for the upcoming year's games: pull the live/preseason Barttorvik ratings for the in-progress 2026–27 season and let the app predict upcoming regular-season and tournament games as they're scheduled (updating as ratings refresh through the season). Extends the general Game Predictor, which currently covers completed seasons 2008–2026. -- **COMPLETE (head-to-head); scheduled-games deferred on data**
+
+- Barttorvik already publishes **2027 preseason ratings** (`2027_team_results.csv`), and they align exactly with the model's 34-feature schema (0 missing/extra, 0 nulls, 365 teams). `update_current_season.py` fetches them and merges/refreshes them into `data/ratings.csv` (now 2008–2027) — re-run any time to pull updated ratings through the season.
+
+- The Game Predictor now offers **2027** (defaults to it) with an "in progress" banner: any 2026–27 head-to-head predicts immediately (e.g. Air Force vs Abilene Christian, neutral → 72.5%). The trained model is unchanged (2008–2026 games); it just forecasts from the new season's ratings.
+
+- Scheduled-game prediction ("upcoming games as they're scheduled") is **deferred**: Barttorvik's `2027_super_sked.csv` (the schedule) is still 404 — it publishes closer to tip-off (Nov 2026). `update_current_season.py` reports when it appears; a schedule-driven "upcoming games" view can be layered on then.
 

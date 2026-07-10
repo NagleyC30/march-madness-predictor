@@ -435,10 +435,11 @@ elif page == "Head-to-Head":
 elif page == "Game Predictor":
     st.title("Game Predictor")
     st.markdown(
-        "Predict **any** college-basketball game — regular season or tournament. "
-        "Pick a season and two teams, choose who's at home, and the model gives "
-        "each side's win probability. It's trained on **every D1 game since 2008** "
-        "(~100k games) using Barttorvik efficiency ratings plus home court."
+        "Predict **any** college-basketball game — regular season or tournament, "
+        "including the **in-progress season**. Pick a season and two teams, choose "
+        "who's at home, and the model gives each side's win probability. It's "
+        "trained on **every D1 game since 2008** (~100k games) using Barttorvik "
+        "efficiency ratings plus home court."
     )
 
     artifact, ratings = load_game_predictor()
@@ -453,10 +454,29 @@ elif page == "Game Predictor":
         meta = artifact["meta"]
         features = meta["features"]
         seasons = sorted(ratings["YEAR"].unique(), reverse=True)
+        # Any season beyond the model's training range is the in-progress one —
+        # its ratings are Barttorvik's live/preseason projections, not final.
+        in_progress_year = (seasons[0] if seasons and seasons[0] > meta["year_max"]
+                            else None)
+
+        def _season_label(y):
+            return f"{y} — in progress" if y == in_progress_year else str(y)
 
         c1, c2 = st.columns([1, 2])
-        season = c1.selectbox("Season", seasons, index=0)
+        season = c1.selectbox("Season", seasons, index=0,
+                              format_func=_season_label)
         ryear = ratings[ratings["YEAR"] == season]
+
+        if season == in_progress_year:
+            st.info(
+                f"**{season - 1}-{str(season)[-2:]} is in progress.** These are "
+                "Barttorvik's live/preseason projected ratings, which refresh as "
+                "games are played — re-run `python update_current_season.py` to pull "
+                "the latest. The model itself is unchanged (trained on completed "
+                f"seasons through {meta['year_max']}); it's forecasting from the new "
+                "season's ratings. Head-to-head works now; game-by-game schedule "
+                "prediction will follow once Barttorvik publishes the schedule."
+            )
         teams = sorted(ryear["TEAM"].unique())
 
         c3, c4 = st.columns(2)

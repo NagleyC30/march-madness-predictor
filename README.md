@@ -15,6 +15,10 @@ trains on seasons that happened *before* it — no looking into the future. Acro
   side by side, plus each model's full bracket.
 - **Head-to-Head** — pick any two teams from a season for a live prediction with
   win probabilities and an implied moneyline.
+- **Game Predictor** — predict *any* D1 game (regular season or tournament) from
+  a separate model trained on ~100k games since 2008. Covers completed seasons
+  **and the in-progress 2026–27 season** using Barttorvik's live/preseason
+  ratings (refreshed with `python update_current_season.py`).
 - **Model Accuracy** — walk-forward accuracy by training window, year, and round.
 - **Betting Simulation** — hypothetical P&L at several confidence thresholds,
   settled two ways: against **real historical closing moneylines** (2008–2019,
@@ -34,6 +38,7 @@ trains on seasons that happened *before* it — no looking into the future. Acro
 | `mm_model.py` | Importable, side-effect-free modeling core. |
 | `precompute.py` | Runs the heavy walk-forward once, writes result CSVs to `data/`. |
 | `predict_all_windows.py` | Forecasts the upcoming bracket with every training window → `data/bracket_all_windows.csv`. |
+| `update_current_season.py` | Pulls the in-progress season's Barttorvik ratings into `data/ratings.csv` for the Game Predictor. |
 | `fetch_odds.py` | Downloads & parses real historical sportsbook moneylines → `data/odds.csv`. |
 | `backtest_odds.py` | Settles the model's picks at those real odds (moneyline + flip-to-spread) → `data/betting_simulation_{real,spreadflip}.csv`. |
 | `data/` | Precomputed results the app loads instantly. |
