@@ -1,0 +1,13 @@
+model,calibrated,games,accuracy,brier,log_loss,ece
+Random Forest,raw,988,0.7115,0.192,0.5658,0.0362
+HistGradientBoosting,isotonic,988,0.7095,0.1937,0.5802,0.0247
+Random Forest,isotonic,988,0.7217,0.1956,0.5828,0.0393
+Bagging,isotonic,988,0.7136,0.1961,0.5783,0.0226
+SVM (RBF),raw,988,0.7136,0.1981,0.5838,0.0289
+MLP (neural net),isotonic,988,0.7115,0.2008,0.6057,0.0361
+SVM (RBF),isotonic,988,0.7095,0.2013,0.6148,0.0466
+Logistic Regression,isotonic,988,0.7055,0.2017,0.6131,0.0536
+Bagging,raw,988,0.7004,0.2068,0.6389,0.0843
+Logistic Regression,raw,988,0.6842,0.2207,0.7133,0.118
+HistGradientBoosting,raw,988,0.6933,0.238,0.8506,0.1865
+MLP (neural net),raw,988,0.666,0.2882,1.6932,0.27

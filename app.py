@@ -13,6 +13,8 @@ import altair as alt
 import mm_model as mm
 import game_model as gm
 import betting_strategies as bs
+import model_explain as me
+import contest as ct
 
 st.set_page_config(
     page_title="March Madness Predictor",
@@ -66,7 +68,38 @@ def load_strategy_lab():
     summary, equity = bs.run_all(games)
     slices = pd.concat([bs.run_slices(games, "round"),
                         bs.run_slices(games, "seed")], ignore_index=True)
-    return {"games": games, "summary": summary, "equity": equity, "slices": slices}
+    out = {"games": games, "summary": summary, "equity": equity, "slices": slices}
+
+    # Calibrated twin (backtest_calibrated.py): same bets, isotonic-calibrated
+    # probabilities. Lets the lab put raw vs calibrated ROI side by side.
+    cal_path = os.path.join(DATA_DIR, "bet_games_calibrated.csv")
+    if os.path.exists(cal_path):
+        cal_summary, _ = bs.run_all(bs.load_games(cal_path))
+        out["cal_summary"] = cal_summary
+    return out
+
+
+@st.cache_data
+def load_explainers():
+    """Teaching artifacts for the 'How the Models Work' page — precomputed to disk
+    by `python model_explain.py` (instant), or computed live as a fallback."""
+    return me.load_artifacts()
+
+
+@st.cache_data
+def load_bakeoff():
+    """Load the precomputed model bake-off (model_bakeoff.py). Returns None if it
+    hasn't been generated yet."""
+    s_path = os.path.join(DATA_DIR, "model_bakeoff_summary.csv")
+    r_path = os.path.join(DATA_DIR, "model_bakeoff_reliability.csv")
+    if not (os.path.exists(s_path) and os.path.exists(r_path)):
+        return None
+    out = {"summary": pd.read_csv(s_path), "reliability": pd.read_csv(r_path)}
+    m_path = os.path.join(DATA_DIR, "model_bakeoff_meta.csv")
+    out["meta"] = pd.read_csv(m_path).iloc[0] if os.path.exists(m_path) else None
+    p_path = os.path.join(DATA_DIR, "bracket_pool_summary.csv")
+    out["pool"] = pd.read_csv(p_path) if os.path.exists(p_path) else None
+    return out
 
 
 @st.cache_data
@@ -167,8 +200,9 @@ st.sidebar.caption(
 page = st.sidebar.radio(
     "Navigate",
     ["Overview", "Bracket Predictions", "Head-to-Head", "Game Predictor",
-     "Backtest & Calibration", "Model Accuracy", "Betting Simulation",
-     "Custom Metric", "Data Explorer"],
+     "Me vs Machine", "Backtest & Calibration", "Model Accuracy", "Model Bake-off",
+     "How the Models Work", "Betting Simulation", "Custom Metric",
+     "Data Explorer"],
 )
 
 if results["meta"] is not None:
@@ -556,6 +590,175 @@ elif page == "Game Predictor":
 
 
 # ──────────────────────────────────────────────────────────────
+# PAGE: ME VS MACHINE  (the everlasting contest — manual entry)
+# ──────────────────────────────────────────────────────────────
+
+elif page == "Me vs Machine":
+    st.title("🥊 Me vs. the Machine")
+    st.markdown(
+        "An everlasting contest: for every game, **you** pick a winner and so does "
+        "the **model** — then we track who's better. This is the **manual-entry** "
+        "version (you enter games and results by hand); an automated weekly slate "
+        "arrives once the 2026–27 schedule publishes."
+    )
+    with st.expander("The rules (why this stays honest)", expanded=False):
+        st.markdown(
+            "- **Blind entry.** You lock your pick *before* the model's pick is "
+            "shown — the machine's choice is revealed only after you commit.\n"
+            "- **Locked together, timestamped.** Both picks are written to "
+            "`data/contest_picks.csv` the instant you lock in, so neither can be "
+            "edited after the fact.\n"
+            "- **Settle only after the game.** You enter the real winner later; "
+            "scores never touch a pick before it's locked.\n"
+            "- **Betting is a fair, symmetric flat bet.** If you enter the market "
+            "moneylines, each side flat-bets *its own* pick — the only "
+            "apples-to-apples wager when you give a pick but not a probability. "
+            "Richer strategies (Kelly, +EV) come with the real-odds feed later."
+        )
+
+    artifact, ratings = load_game_predictor()
+    if artifact is None:
+        st.warning(
+            "The contest needs the trained game model. Run `python -c \"import "
+            "game_model; game_model.save_model()\"` locally to build it."
+        )
+    else:
+        model = artifact["model"]
+        meta = artifact["meta"]
+        features = meta["features"]
+
+        # ── Make your pick (blind) ──────────────────────────────────
+        st.subheader("Make your pick")
+        seasons = sorted(ratings["YEAR"].unique(), reverse=True)
+        in_progress_year = (seasons[0] if seasons and seasons[0] > meta["year_max"]
+                            else None)
+        cA, cB = st.columns([1, 2])
+        season = cA.selectbox(
+            "Season", seasons, index=0,
+            format_func=lambda y: f"{y} (in progress)" if y == in_progress_year else str(y))
+        ryear = ratings[ratings["YEAR"] == season]
+        teams = sorted(ryear["TEAM"].unique())
+
+        c1, c2 = st.columns(2)
+        team_a = c1.selectbox("Team A", teams, index=0, key="mvm_a")
+        team_b = c2.selectbox("Team B", teams, index=1 if len(teams) > 1 else 0,
+                              key="mvm_b")
+        loc_label = st.radio(
+            "Where is it played?",
+            [f"🏠 {team_a} home", "⚖️ Neutral court", f"🏠 {team_b} home"],
+            index=1, horizontal=True, key="mvm_loc")
+        location = ("A" if loc_label.endswith(f"{team_a} home")
+                    else "B" if loc_label.endswith(f"{team_b} home") else "N")
+
+        if team_a == team_b:
+            st.info("Pick two different teams.")
+        else:
+            user_pick = st.radio("**Your pick to win**", [team_a, team_b],
+                                 horizontal=True, key="mvm_pick")
+            with st.expander("Optional: confidence & market moneylines"):
+                user_conf = st.slider("How confident are you?", 0.50, 0.99, 0.60,
+                                      help="Stored for later; doesn't affect the W-L record.")
+                mcols = st.columns(2)
+                ml_a = mcols[0].number_input(f"{team_a} moneyline", value=0, step=5,
+                                             help="0 = no line. Enter the real line to settle bets.")
+                ml_b = mcols[1].number_input(f"{team_b} moneyline", value=0, step=5)
+
+            if st.button("🔒 Lock in my pick — then reveal the model's", type="primary"):
+                probs = gm.win_probabilities(team_a, team_b, location, ryear,
+                                             model, features)
+                if probs is None:
+                    st.warning("One of these teams has no ratings for this season.")
+                else:
+                    p_a, p_b = probs
+                    model_pick = team_a if p_a >= p_b else team_b
+                    model_prob = max(p_a, p_b)
+                    ct.add_pick(
+                        season, team_a, team_b, location, user_pick,
+                        model_pick, model_prob, user_conf=round(user_conf, 2),
+                        ml_a=(ml_a or None), ml_b=(ml_b or None))
+                    agree = model_pick == user_pick
+                    st.success(f"Locked **{user_pick}**. 🤖 The model picked "
+                               f"**{model_pick}** ({fmt_pct(model_prob)}) — "
+                               f"{'you agree 🤝' if agree else 'you disagree ⚔️'}.")
+                    st.caption("Enter the result below once the game is played.")
+
+        # ── Awaiting results ────────────────────────────────────────
+        picks = ct.load_picks()
+        pending = picks[picks["status"] == "pending"]
+        st.divider()
+        st.subheader(f"Awaiting results ({len(pending)})")
+        if pending.empty:
+            st.caption("No open games. Lock in a pick above.")
+        else:
+            for r in pending.itertuples(index=False):
+                venue = ("neutral" if r.location == "N"
+                         else f"{r.team_a} home" if r.location == "A"
+                         else f"{r.team_b} home")
+                gc1, gc2, gc3 = st.columns([3, 2, 1])
+                gc1.markdown(f"**{r.team_a}** vs **{r.team_b}**  \n"
+                             f"<small>{r.season} · {venue} · your pick: "
+                             f"{r.user_pick}</small>", unsafe_allow_html=True)
+                winner = gc2.selectbox("Winner", [r.team_a, r.team_b],
+                                       key=f"win_{r.id}", label_visibility="collapsed")
+                if gc3.button("Settle", key=f"settle_{r.id}"):
+                    ct.settle_pick(r.id, winner)
+                    st.rerun()
+
+        # ── Scoreboard ──────────────────────────────────────────────
+        sb = ct.scoreboard(picks)
+        st.divider()
+        st.subheader("🏆 Scoreboard")
+        if sb["n_settled"] == 0:
+            st.info("No settled games yet — lock in some picks and record the "
+                    "results to start the contest.")
+        else:
+            m1, m2 = st.columns(2)
+            m1.metric("🤖 Model record",
+                      f"{sb['model_w']}–{sb['model_l']}",
+                      f"{sb['model_w'] / sb['n_settled']:.0%} correct")
+            m2.metric("🧑 Your record",
+                      f"{sb['user_w']}–{sb['user_l']}",
+                      f"{sb['user_w'] / sb['n_settled']:.0%} correct")
+
+            if sb["disagree"] > 0:
+                lead = ("**you** are" if sb["disagree_user_right"] > sb["disagree_model_right"]
+                        else "**the model** is" if sb["disagree_model_right"] > sb["disagree_user_right"]
+                        else "you're **even**")
+                st.markdown(
+                    f"**The stat that matters — when you disagree** "
+                    f"({sb['disagree']} game{'s' if sb['disagree'] != 1 else ''}): "
+                    f"you were right **{sb['disagree_user_right']}**, the model "
+                    f"**{sb['disagree_model_right']}**. On the games you saw "
+                    f"differently, {lead} ahead. (You agreed on {sb['agree']}.)")
+            else:
+                st.caption("You've agreed with the model on every settled game so "
+                           "far — no head-to-head disagreements yet.")
+
+            if sb["n_user_bets"] or sb["n_model_bets"]:
+                b1, b2 = st.columns(2)
+                b1.metric(f"🤖 Model flat-bet P&L ({sb['n_model_bets']} bets)",
+                          f"${sb['model_pnl']:+,.2f}")
+                b2.metric(f"🧑 Your flat-bet P&L ({sb['n_user_bets']} bets)",
+                          f"${sb['user_pnl']:+,.2f}")
+                st.caption(f"Flat ${ct.STAKE:,.0f} on each pick, at the moneylines "
+                           "you entered. Only games with a line count.")
+
+        settled = picks[picks["status"] == "settled"]
+        if not settled.empty:
+            with st.expander(f"History ({len(settled)} settled)"):
+                hist = settled[["season", "team_a", "team_b", "user_pick",
+                                "model_pick", "actual_winner"]].rename(columns={
+                    "season": "Season", "team_a": "Team A", "team_b": "Team B",
+                    "user_pick": "Your pick", "model_pick": "Model pick",
+                    "actual_winner": "Winner"})
+                st.dataframe(hist[::-1], hide_index=True, width="stretch")
+
+        st.caption("Picks are stored in `data/contest_picks.csv`. On an ephemeral "
+                   "cloud host this resets on restart — durable storage is a later "
+                   "upgrade.")
+
+
+# ──────────────────────────────────────────────────────────────
 # PAGE: BACKTEST & CALIBRATION  (general game model)
 # ──────────────────────────────────────────────────────────────
 
@@ -810,6 +1013,305 @@ elif page == "Model Accuracy":
 
 
 # ──────────────────────────────────────────────────────────────
+# PAGE: MODEL BAKE-OFF
+# ──────────────────────────────────────────────────────────────
+
+elif page == "Model Bake-off":
+    st.title("Model Bake-off")
+    bake = load_bakeoff()
+    if bake is None:
+        st.info(
+            "The model bake-off hasn't been generated yet. Run "
+            "`python model_bakeoff.py` to build it."
+        )
+    else:
+        win = bake["meta"]["window"] if bake["meta"] is not None else "all_prior"
+        st.markdown(
+            "The tournament model picks between Random Forest and Bagging on "
+            "cross-validated **accuracy**. But the betting work showed the model "
+            "is **overconfident** — its *picks* can be fine while its "
+            "*probabilities* are wrong, and accuracy can't see that. This bakes a "
+            "wider roster of classifiers (all scikit-learn, no new dependency) "
+            "against each other on **probability quality** — Brier score, "
+            "log-loss and calibration error — and tests whether post-hoc "
+            "**isotonic calibration** fixes the overconfidence.\n\n"
+            f"Walk-forward from 2009, training window **{win}**. Metrics pooled "
+            "over every actual tournament game."
+        )
+
+        summ = bake["summary"].copy()
+        best = summ.sort_values("brier").iloc[0]
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Best Brier score", f"{best['brier']:.4f}",
+                  f"{best['model']} ({best['calibrated']})")
+        raw_ll = summ[summ["calibrated"] == "raw"]["log_loss"].mean()
+        cal_ll = summ[summ["calibrated"] == "isotonic"]["log_loss"].mean()
+        c2.metric("Avg log-loss, raw → calibrated",
+                  f"{raw_ll:.3f} → {cal_ll:.3f}",
+                  f"{(cal_ll - raw_ll):+.3f}", delta_color="inverse")
+        c3.metric("Accuracy spread (all variants)",
+                  f"{summ['accuracy'].min():.3f}–{summ['accuracy'].max():.3f}",
+                  "picks barely differ")
+
+        st.subheader("Every model, ranked by Brier score")
+        st.caption("Lower Brier / log-loss / ECE = better-calibrated probabilities. "
+                   "**ECE** is the average gap between confidence and reality.")
+        disp = summ.rename(columns={
+            "model": "Model", "calibrated": "Calibration", "games": "Games",
+            "accuracy": "Accuracy", "brier": "Brier", "log_loss": "Log-loss",
+            "ece": "ECE"})
+
+        def _shade_low_good(col):
+            """Green (best/low) → red (worst/high) shading, no matplotlib."""
+            lo, hi = float(col.min()), float(col.max())
+            rng = (hi - lo) or 1.0
+            out = []
+            for v in col:
+                t = (float(v) - lo) / rng
+                r = int(46 + (214 - 46) * t)
+                g = int(160 + (39 - 160) * t)
+                b = int(44 + (40 - 44) * t)
+                out.append(f"background-color: rgba({r},{g},{b},0.25)")
+            return out
+
+        st.dataframe(
+            disp.style.format({"Accuracy": "{:.3f}", "Brier": "{:.4f}",
+                               "Log-loss": "{:.4f}", "ECE": "{:.4f}"})
+            .apply(_shade_low_good, subset=["Brier", "Log-loss", "ECE"]),
+            hide_index=True, width="stretch",
+        )
+
+        st.subheader("Reliability — is a stated 70% really a 70%?")
+        rel = bake["reliability"]
+        model_pick = st.selectbox("Model", sorted(rel["model"].unique()),
+                                  index=sorted(rel["model"].unique()).index(best["model"])
+                                  if best["model"] in set(rel["model"]) else 0)
+        rsub = rel[rel["model"] == model_pick].copy()
+        rsub["Calibration"] = rsub["calibrated"]
+        diag = pd.DataFrame({"x": [0, 1], "y": [0, 1]})
+        line = alt.Chart(rsub).mark_line(point=True).encode(
+            x=alt.X("mean_pred:Q", title="Model's predicted probability",
+                    scale=alt.Scale(domain=[0, 1])),
+            y=alt.Y("obs_freq:Q", title="Actual win frequency",
+                    scale=alt.Scale(domain=[0, 1])),
+            color=alt.Color("Calibration:N"),
+            tooltip=["Calibration", alt.Tooltip("mean_pred:Q", format=".2f"),
+                     alt.Tooltip("obs_freq:Q", format=".2f"), "count"],
+        )
+        perfect = alt.Chart(diag).mark_line(strokeDash=[4, 4], color="gray").encode(
+            x="x:Q", y="y:Q")
+        st.altair_chart((perfect + line).properties(height=400), width="stretch")
+        st.caption(
+            "The dashed line is perfect calibration. Points **below** it mean the "
+            "model is overconfident (it says 80% but wins less often); calibration "
+            "should pull the curve toward the diagonal."
+        )
+        st.info(
+            "**Takeaway.** The models barely differ on *accuracy*, but a lot on "
+            "*calibration*: raw boosting and the MLP (a small neural net) are badly "
+            "overconfident on this small, tabular dataset — the MLP is the worst raw "
+            "model — while Random Forest is already well-calibrated because bagging "
+            "averages its trees' votes. **Isotonic calibration** sharply improves the "
+            "overconfident models. Next: feed these calibrated probabilities back "
+            "into the betting backtest and see whether the +EV edges survive."
+        )
+
+        # ── Which model fills the best bracket? ─────────────────────
+        pool = bake.get("pool")
+        if pool is not None and not pool.empty:
+            st.subheader("Which model fills the best bracket?")
+            st.markdown(
+                "Accuracy and Brier weight every game equally, but a bracket "
+                "**pool** doesn't: calling the champion is worth **320** points, a "
+                "first-round game only **10**. Each model's full walk-forward "
+                "bracket, scored 10/20/40/80/160/320 by round and summed over "
+                "2009–2025 — against a **chalk** baseline that always picks the "
+                "higher seed."
+            )
+            chalk_total = float(pool.loc[pool["model"].str.startswith("Chalk"),
+                                         "total"].iloc[0]) if pool["model"].str.startswith("Chalk").any() else None
+            pool_disp = pool.copy()
+            pool_disp["beats_chalk"] = pool_disp["total"] >= (chalk_total or 0)
+            bar = alt.Chart(pool_disp).mark_bar().encode(
+                x=alt.X("total:Q", title="Total pool points (2009–2025)"),
+                y=alt.Y("model:N", sort="-x", title=None),
+                color=alt.Color("beats_chalk:N", title="Beats chalk?",
+                                scale=alt.Scale(domain=[True, False],
+                                                range=["#2ca02c", "#d62728"])),
+                tooltip=["model", "total", "avg_per_year", "pct_of_max"],
+            )
+            rule = None
+            if chalk_total is not None:
+                rule = alt.Chart(pd.DataFrame({"x": [chalk_total]})).mark_rule(
+                    strokeDash=[4, 4], color="gray").encode(x="x:Q")
+            st.altair_chart((bar + rule) if rule is not None else bar,
+                            width="stretch")
+
+            round_cols = ["R64", "R32", "S16", "E8", "F4", "Championship"]
+            pd_disp = pool[["model", "total", "avg_per_year", "pct_of_max"] + round_cols].rename(
+                columns={"model": "Model", "total": "Total", "avg_per_year": "Avg/yr",
+                         "pct_of_max": "% of max"})
+            st.dataframe(
+                pd_disp.style.format({"Total": "{:.0f}", "Avg/yr": "{:.1f}",
+                                      "% of max": "{:.1f}",
+                                      **{c: "{:.0f}" for c in round_cols}}),
+                hide_index=True, width="stretch",
+            )
+            st.info(
+                "**Takeaway.** Only **Random Forest** clearly beats a chalk bracket; "
+                "the **MLP is the worst by far** — the same overfitting that wrecked "
+                "its calibration also busts its brackets. The **Championship column "
+                "is 0 for everyone**: under the app's cascade scoring a game only "
+                "counts if *both* teams in your predicted matchup actually reached it, "
+                "which essentially never holds by the final — so deep-round credit is "
+                "rare, but the comparison is apples-to-apples across models."
+            )
+
+
+# ──────────────────────────────────────────────────────────────
+# PAGE: HOW THE MODELS WORK
+# ──────────────────────────────────────────────────────────────
+
+elif page == "How the Models Work":
+    st.title("How the Models Work")
+    st.markdown(
+        "A plain-English tour of the classifiers behind the predictions — what "
+        "each one actually *does*, why we use several, and whether a neural "
+        "network would help. The numbers that rank these models live on the "
+        "**Model Bake-off** page; this page explains the machinery."
+    )
+
+    st.header("How the model sees a game")
+    st.markdown(
+        "Every game is reduced to one row of **differences**. For each of the 34 "
+        "KenPom/Barttorvik ratings we subtract the lower seed's value from the "
+        "higher seed's, and the model learns to predict **`HIGH_SEED_WINS`** (1 if "
+        "the better seed wins). So a *positive* number always means \"the "
+        "favorite has more of this stat.\" The model never sees team names — only "
+        "these rating gaps, which is what lets it generalize to matchups it has "
+        "never seen."
+    )
+
+    expl = load_explainers()
+
+    st.header("What the model actually looks at")
+    st.markdown(
+        "Impurity-based feature importance from a Random Forest trained on every "
+        "historical tournament game — how often each rating gap is the thing that "
+        "decides a split. The efficiency margins dominate; team names, seeds and "
+        "conference never enter."
+    )
+    imp = expl["importance"].copy()
+    chart = alt.Chart(imp).mark_bar(color="#1f77b4").encode(
+        x=alt.X("importance:Q", title="Importance"),
+        y=alt.Y("feature:N", sort="-x", title=None),
+        tooltip=["feature", alt.Tooltip("importance:Q", format=".3f")],
+    )
+    st.altair_chart(chart.properties(height=420), width="stretch")
+    st.caption(
+        "**BADJ EM / KADJ EM** are Barttorvik's and KenPom's adjusted efficiency "
+        "margins (points per 100 possessions vs. an average team); **WAB** is "
+        "\"wins above bubble\"; **BARTHAG** is a power rating. In short: the model "
+        "leans on how much better one team is at scoring and preventing scoring."
+    )
+
+    st.header("A single decision tree")
+    st.markdown(
+        "The simplest building block. A tree asks yes/no questions about the "
+        "rating gaps, funneling each game down to a prediction. Here's a **real** "
+        "depth-3 tree trained on the data (shortened for readability) — read "
+        "`BADJ EM <= 11.50` as \"is the favorite's efficiency-margin edge 11.5 or "
+        "less?\":"
+    )
+    st.code(expl["tree"], language="text")
+    st.markdown(
+        "One tree is easy to read but **brittle** — nudge the data and the splits "
+        "jump around (high variance). Every model below is a strategy for taming "
+        "that brittleness."
+    )
+
+    st.header("The roster, in plain English")
+    with st.expander("🌲 Bagging & Random Forest — averaging many trees", expanded=True):
+        st.markdown(
+            "**Bagging** trains many trees, each on a random resample of the games, "
+            "and averages their votes. Averaging cancels the individual trees' "
+            "random errors, so the ensemble is far steadier than any one tree. "
+            "**Random Forest** adds one twist: at each split a tree may only "
+            "consider a random subset of the features, which *decorrelates* the "
+            "trees so the averaging helps even more.\n\n"
+            "Because the prediction is a **vote share** across hundreds of trees, "
+            "Random Forest's probabilities come out naturally well-behaved — which "
+            "is exactly why it was the best-**calibrated** and best **bracket-pool** "
+            "model in the bake-off."
+        )
+    with st.expander("🚀 Boosting — HistGradientBoosting / XGBoost"):
+        st.markdown(
+            "Boosting builds trees **in sequence**, each one focused on the games "
+            "the previous trees got wrong. This chases accuracy aggressively and "
+            "often ranks games very well — but it also tends to become "
+            "**overconfident**, pushing probabilities toward 0 or 1. In the "
+            "bake-off, raw HistGradientBoosting was badly miscalibrated until "
+            "isotonic calibration reined it in. **XGBoost/LightGBM** are faster, "
+            "regularized cousins of the same idea; we've left them out for now to "
+            "avoid an extra deploy dependency, since HistGradientBoosting already "
+            "represents the family."
+        )
+    with st.expander("📈 Logistic Regression — the calibrated baseline"):
+        st.markdown(
+            "A straight-line model: it weights each rating gap and squashes the sum "
+            "into a probability. It can't capture interactions the way trees do, so "
+            "its accuracy is a touch lower — but its probabilities are honest by "
+            "construction, which makes it a valuable sanity-check baseline."
+        )
+    with st.expander("🧭 SVM — drawing the widest boundary"):
+        st.markdown(
+            "A Support Vector Machine finds the boundary that separates "
+            "favorite-wins from upset games with the **widest possible margin**, "
+            "and (with an RBF kernel) can bend that boundary into curves. Solid "
+            "accuracy, but its raw scores aren't true probabilities without extra "
+            "calibration."
+        )
+    with st.expander("🧠 MLP — a (small) neural network"):
+        st.markdown(
+            "A multi-layer perceptron stacks layers of weighted sums and "
+            "non-linearities, learning its own feature combinations instead of "
+            "being handed them. In principle the most flexible model here — in "
+            "practice, on the bake-off it was the **worst**: badly overconfident "
+            "and the weakest bracket-filler. See the next section for why, and "
+            "whether it's worth pursuing."
+        )
+
+    st.header("Could this be a neural network?")
+    st.markdown(
+        "Yes — and it already partly is (the **MLP** above is a small neural net, "
+        "and it needs no extra dependency). The real question is whether a "
+        "*bigger, deeper* net would help. On this data, probably not yet:"
+    )
+    st.markdown(
+        "- **The blocker is data size, not tooling.** The tournament model trains "
+        "on only ~1,000 games with 34 features. Deep nets are hungry; on small, "
+        "tabular data they **overfit** — exactly what we saw (the MLP's log-loss "
+        "blew up to 1.69). Gradient-boosted trees usually *beat* neural nets in "
+        "this regime.\n"
+        "- **The real unlock is more data.** There are **~103,000 regular-season "
+        "games** the tournament model currently ignores. Training on those is the "
+        "structural fix for overfitting **and** the genuine prerequisite for a "
+        "deep network — it's logged as the next big modelling item.\n"
+        "- **Calibration still applies.** Neural nets are miscalibrated out of the "
+        "box too, so they'd need the same isotonic/Platt step the trees got.\n"
+        "- **Deploy cost.** A real deep net means PyTorch/Keras — heavy for this "
+        "Streamlit app — whereas the MLP rides along inside scikit-learn for free."
+    )
+    st.info(
+        "**Bottom line.** More flexible ≠ better on a small dataset. Random Forest "
+        "quietly wins here because averaging keeps it honest. A deep neural net "
+        "becomes worth trying **after** we train on the full regular-season "
+        "history — see the **Model Bake-off** page for the head-to-head numbers."
+    )
+
+
+# ──────────────────────────────────────────────────────────────
 # PAGE: BETTING SIMULATION
 # ──────────────────────────────────────────────────────────────
 
@@ -1061,6 +1563,47 @@ elif page == "Betting Simulation":
                 "concentrates in the **first round** and on **double-digit-seed "
                 "underdogs**, and evaporates on the favorites — consistent with "
                 "the model being overconfident on chalk."
+            )
+
+        # ── Does the edge survive calibration? (raw vs calibrated probs) ──
+        cal_summary = lab.get("cal_summary")
+        if cal_summary is not None:
+            st.subheader("Does the edge survive calibration?")
+            st.markdown(
+                "The Bake-off showed the model is **overconfident** — so some of "
+                "the +EV \"edge\" above may just be the model overstating its win "
+                "probabilities, not a real market inefficiency. Here the **same "
+                "bets at the same closing lines** are re-settled with the model's "
+                "probabilities **isotonic-calibrated** (fit on the training "
+                "seasons only). If the profit shrinks toward zero, the edge was "
+                "mostly overconfidence."
+            )
+            raw_w = lab["summary"][lab["summary"]["window"] == lab_window]
+            cal_w = cal_summary[cal_summary["window"] == lab_window]
+            comp = raw_w[["strategy", "roi_pct", "avg_edge_pct"]].merge(
+                cal_w[["strategy", "roi_pct", "avg_edge_pct"]],
+                on="strategy", suffixes=(" raw", " calib"))
+            comp["ROI Δ"] = (comp["roi_pct calib"] - comp["roi_pct raw"]).round(1)
+            comp = comp.rename(columns={
+                "strategy": "Strategy", "roi_pct raw": "ROI % (raw)",
+                "roi_pct calib": "ROI % (calib)", "avg_edge_pct raw": "Edge % (raw)",
+                "avg_edge_pct calib": "Edge % (calib)"})
+            comp = comp[["Strategy", "ROI % (raw)", "ROI % (calib)", "ROI Δ",
+                         "Edge % (raw)", "Edge % (calib)"]]
+            st.dataframe(
+                comp.style.format({"ROI % (raw)": "{:+.1f}", "ROI % (calib)": "{:+.1f}",
+                                   "ROI Δ": "{:+.1f}", "Edge % (raw)": "{:+.1f}",
+                                   "Edge % (calib)": "{:+.1f}"})
+                .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
+                     else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+                     subset=["ROI % (raw)", "ROI % (calib)"]),
+                hide_index=True, width="stretch",
+            )
+            st.caption(
+                "**Avg edge %** is how much the model's probability exceeds the "
+                "de-vigged market price — calibration should shrink the *claimed* "
+                "edge toward what's real. Watch whether the +EV strategies' ROI "
+                "collapses once that happens."
             )
 
 

@@ -1,0 +1,19 @@
+|--- BADJ EM <= 11.50
+|   |--- BADJ EM RANK <= 14.50
+|   |   |--- WAB <= 3.55
+|   |   |   |--- class: 1
+|   |   |--- WAB >  3.55
+|   |   |   |--- class: 1
+|   |--- BADJ EM RANK >  14.50
+|   |   |--- TOV% RANK <= -73.50
+|   |   |   |--- class: 0
+|   |   |--- TOV% RANK >  -73.50
+|   |   |   |--- class: 0
+|--- BADJ EM >  11.50
+|   |--- AVG HGT <= -2.51
+|   |   |--- class: 0
+|   |--- AVG HGT >  -2.51
+|   |   |--- BARTHAG RANK <= -124.50
+|   |   |   |--- class: 1
+|   |   |--- BARTHAG RANK >  -124.50
+|   |   |   |--- class: 1

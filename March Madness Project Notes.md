@@ -138,6 +138,67 @@ optionally **XGBoost/LightGBM** (weigh the extra deploy dependency). Compare on:
   across 2009–2025) — a concrete "which model fills the best bracket" metric.
 Surface a model-comparison view in the app.
 
+- **Bake-off + calibration — DONE (2026-07-10).** New `model_bakeoff.py`
+  walk-forwards (window `all_prior`, 2009+) a **sklearn-only** roster —
+  Logistic Regression, Random Forest, Bagging, HistGradientBoosting, **MLP (the
+  "neural net")**, SVM — producing one out-of-sample P(high-seed-wins) per real
+  tournament game, plus an **isotonic-calibrated** variant of each. Writes
+  `data/model_bakeoff_{summary,reliability,meta}.csv`; new **Model Bake-off**
+  page (metrics table shaded by Brier/log-loss/ECE + a raw-vs-calibrated
+  reliability diagram). No new deploy dependency (avoided matplotlib — the
+  Styler shading is a hand-rolled green→red `.apply`).
+- **Findings (pooled over 16 tournaments):**
+  - **Accuracy is nearly flat (0.66–0.72)** across all 12 variants — accuracy
+    can't tell these apart, exactly why probabilistic metrics are needed.
+  - **Overconfidence is real and quantified.** Raw HistGradientBoosting ECE
+    **0.187**, raw **MLP the worst** (ECE **0.270**, log-loss **1.69** — classic
+    small-tabular-data overfitting). Isotonic calibration slashes both (HGB→0.025,
+    MLP→0.036); avg log-loss over the roster **0.841 → 0.596** with calibration.
+  - **Random Forest raw is already the best-calibrated** (Brier **0.192**) —
+    bagging averages its trees' votes. Nuance: isotonic *slightly hurts* RF
+    (0.192→0.196) — calibration isn't free on an already-calibrated model with
+    limited data.
+- **Sub-step b — do the +EV edges survive calibration? — DONE (2026-07-10).**
+  `backtest_calibrated.py` re-settles the *same* walk-forward bets at the *same*
+  real closing lines, but wraps the trained model in **isotonic calibration**
+  (fit on training seasons only) → `data/bet_games_calibrated.csv` (same schema
+  as `bet_games.csv`, so the strategy lab runs on it unchanged). New **"Does the
+  edge survive calibration?"** table on the Betting Simulation page puts raw vs
+  calibrated ROI/edge side by side per strategy.
+- **Finding — nuanced, and *stronger* than "the edge was fake":**
+  - The +EV profit **does NOT collapse.** On `all_prior`, Value-flat even nudges
+    up (+4.2→+5.2%), underdogs improve (+7.2→+10.4%); only edge≥3% craters
+    (+11.8→+3.5%). On `last_3` several strategies flip from negative to slightly
+    positive. So the longer-window edge is **partly robust** to calibration.
+  - **¼-Kelly improves on every window** (all_prior −8.7→−4.1, last_3 −13.9→−6.2,
+    last_1 −19.0→−8.6) — calibration curbs the overconfident sizing that cratered
+    the bankroll, exactly as theory predicts (though Kelly still loses).
+  - **The claimed edge % barely moves** — because the backtest's chosen model is
+    the RF/Bagging the bake-off already found *well-calibrated*. The dramatic
+    overconfidence lived in the models the backtest doesn't use (MLP, raw
+    boosting). Consistent story across both sub-steps.
+- **Sub-step c — bracket-pool points per model — DONE (2026-07-10).**
+  `bracket_pool.py` walk-forwards each roster model's *full* bracket
+  (`simulate_full_bracket`), scores it 10/20/40/80/160/320-by-round via the app's
+  cascade scorer, and sums over 2009–2025 → `data/bracket_pool_{summary,by_year}.csv`.
+  Includes a **Chalk (always higher seed)** baseline. New "Which model fills the
+  best bracket?" section on the Model Bake-off page (bar chart vs the chalk line +
+  per-round table).
+- **Finding:** **Random Forest is the only model that clearly beats chalk** (8740
+  vs 8170 pts over 16 yrs); **the MLP is worst by far (6510)** — the same
+  overfitting that wrecked its calibration busts its brackets. HGB and LogReg also
+  trail chalk. **Caveat surfaced in-app:** the *Championship* column is 0 for every
+  model because the cascade convention only credits a game when *both* teams in the
+  predicted matchup actually reached it — near-impossible by the final, so deep-
+  round credit is rare (but the comparison stays apples-to-apples).
+- **Still TODO / optional in Phase 2:**
+  - Optional: run the bake-off across all five windows (currently `all_prior`
+    only); consider XGBoost/LightGBM iff a real gain justifies the dep.
+  - **New follow-up (from the overfitting review):** train the classifier on the
+    ~103k regular-season games in `data/games.csv` (the tournament model only sees
+    ~1k tournament games) — the structural fix for overfitting and the real
+    prerequisite for a genuine deep neural net. Log as a post-Phase-2 item.
+
 ---
 
 **PHASE 3 — UI / UX polish (make it nice for people to use).**
@@ -182,7 +243,24 @@ of who's better. Show W-L-D for the model and for me, plus how much each of us
 would have made under **every betting strategy** (item 7's lab). Must be
 automated for 2027-forward games not yet played, with a recurring prompt to lock
 my picks *before* tip-off (no score leakage), and I must not see the model's pick
-when I make mine. -- **TODO / partially data-blocked**
+when I make mine. -- **IN PROGRESS — manual-entry mode DONE (2026-07-10); auto-schedule deferred on data**
+- **Manual-entry mode shipped.** New `contest.py` (store + scoring) + **"Me vs
+  Machine"** page: pick a season/two teams/venue, lock your pick, and *then* the
+  model's pick is revealed (blind entry enforced — the model is only queried
+  inside the lock handler, never rendered before you commit). Both picks are
+  written to `data/contest_picks.csv` with a UTC timestamp; you settle each game
+  later by entering the real winner. Scoreboard: model vs. you W-L, agreement,
+  and the headline **"when you disagree, who's right?"** stat. Optional market
+  moneylines enable a **symmetric flat-bet P&L** (each side flat-bets its own
+  pick — the fair wager when the human gives a pick but not a probability).
+  Verified end-to-end live (lock → pending → settle → scoreboard). `contest_picks.csv`
+  is gitignored (user runtime data); dtype gotcha fixed (empty text cols read as
+  float64 rejected timestamp writes).
+- **Still deferred (auto phase):** the automated weekly slate (needs the 2027
+  schedule / `2027_super_sked.csv`, ~Nov 2026 — same blocker as items 5/11), the
+  recurring "make your picks" prompt (scheduled-tasks/cron), and richer betting
+  strategies (Kelly/+EV) once real closing lines exist. Durable storage (not an
+  ephemeral-cloud CSV) also needed before it's truly "everlasting."
 - **Feasibility: yes, with an honor-system caveat.** The head-to-head engine
   (`game_model`) and the strategy lab already exist; this page is mostly a
   pick-capture + settle + tally layer on top. The hard part is *integrity*, not
@@ -247,7 +325,17 @@ when I make mine. -- **TODO / partially data-blocked**
 15\. **"How the models work" learning page.** Explain each classifier —
 RandomForest, Bagging, XGBoost, etc. — what it's doing and why. Assess turning
 the predictor into a **neural network**: how, and what constraints block it. --
-**TODO (best done alongside Phase 2 so it documents real models)**
+**DONE (2026-07-10)**
+- Built the **"How the Models Work"** page: how the model sees a game (feature
+  diffs → `HIGH_SEED_WINS`), a **live feature-importance chart** and a **real
+  depth-3 decision tree** (`model_explain.py`, precomputed to
+  `data/model_explain_{importance.csv,tree.txt}` so the page loads instantly —
+  live compute was ~26s), plain-English expanders for Bagging/RF, boosting,
+  LogReg, SVM, MLP, and a "Could this be a neural network?" section that ties the
+  MLP's bake-off overfitting to the data-size limit + the ~103k regular-season
+  follow-up. No matplotlib (tree via `export_text`, not `plot_tree`). Explainers
+  reference the **Model Bake-off** numbers instead of duplicating them, so the two
+  pages compose. TODO when re-run: `python model_explain.py` after data changes.
 - **Feasibility: easy for the explainers, nuanced for the NN.**
 - **Explainer content** can be live, not just prose: feature-importance bars from
   the trained model, a single rendered decision tree, bagging/boosting
@@ -299,10 +387,19 @@ exist. Start the gf's **logo** now regardless (external lead time).
    Calibrating/adding models (incl. **MLP** = the "neural net") changes every
    downstream number, so it comes before the new display pages. *In parallel:
    email gf the logo spec (item 16).*
+   - **Sub-step a — bake-off + calibration metrics + app page: DONE (2026-07-10).**
+   - **Sub-step b — calibrated probs → betting backtest: DONE (2026-07-10).**
+     Edges partly survive; ¼-Kelly improves everywhere; claimed edge unmoved
+     because the backtest model was already well-calibrated.
+   - **Sub-step c — bracket-pool points per model: DONE (2026-07-10).** Random
+     Forest is the only model that beats a chalk bracket; MLP is worst.
 3. **Learning page (item 15)** — write it against the models that now exist.
+   -- **DONE (2026-07-10).** "How the Models Work" page; explainers reference the
+   bake-off numbers.
 4. **Me-vs-Machine contest (item 14)** — build once on calibrated probs. Ship
    manual-entry mode first; wire the schedule feed when `2027_super_sked.csv`
-   lands (~Nov 2026).
+   lands (~Nov 2026). -- **Manual-entry mode DONE (2026-07-10)**; auto-schedule +
+   recurring prompt + Kelly/+EV betting deferred to the data phase.
 5. **Branding pass (items 13 + 16 + Phase-3 item 9)** — rename to **B.O.B.**,
    theme selector, drop in gf's logo; theme every page in one sweep.
 6. **Parked on data** (items 10/11/12): 2027 field, scheduled-games feed, extend
