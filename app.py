@@ -14,6 +14,7 @@ import mm_model as mm
 import game_model as gm
 import betting_strategies as bs
 import model_explain as me
+import contest as ct
 
 st.set_page_config(
     page_title="March Madness Predictor",
@@ -199,7 +200,7 @@ st.sidebar.caption(
 page = st.sidebar.radio(
     "Navigate",
     ["Overview", "Bracket Predictions", "Head-to-Head", "Game Predictor",
-     "Backtest & Calibration", "Model Accuracy", "Model Bake-off",
+     "Me vs Machine", "Backtest & Calibration", "Model Accuracy", "Model Bake-off",
      "How the Models Work", "Betting Simulation", "Custom Metric",
      "Data Explorer"],
 )
@@ -586,6 +587,175 @@ elif page == "Game Predictor":
                     "Flip the home/away toggle to see how much home court moves "
                     "the line — it's worth roughly 3–4 points on a neutral game."
                 )
+
+
+# ──────────────────────────────────────────────────────────────
+# PAGE: ME VS MACHINE  (the everlasting contest — manual entry)
+# ──────────────────────────────────────────────────────────────
+
+elif page == "Me vs Machine":
+    st.title("🥊 Me vs. the Machine")
+    st.markdown(
+        "An everlasting contest: for every game, **you** pick a winner and so does "
+        "the **model** — then we track who's better. This is the **manual-entry** "
+        "version (you enter games and results by hand); an automated weekly slate "
+        "arrives once the 2026–27 schedule publishes."
+    )
+    with st.expander("The rules (why this stays honest)", expanded=False):
+        st.markdown(
+            "- **Blind entry.** You lock your pick *before* the model's pick is "
+            "shown — the machine's choice is revealed only after you commit.\n"
+            "- **Locked together, timestamped.** Both picks are written to "
+            "`data/contest_picks.csv` the instant you lock in, so neither can be "
+            "edited after the fact.\n"
+            "- **Settle only after the game.** You enter the real winner later; "
+            "scores never touch a pick before it's locked.\n"
+            "- **Betting is a fair, symmetric flat bet.** If you enter the market "
+            "moneylines, each side flat-bets *its own* pick — the only "
+            "apples-to-apples wager when you give a pick but not a probability. "
+            "Richer strategies (Kelly, +EV) come with the real-odds feed later."
+        )
+
+    artifact, ratings = load_game_predictor()
+    if artifact is None:
+        st.warning(
+            "The contest needs the trained game model. Run `python -c \"import "
+            "game_model; game_model.save_model()\"` locally to build it."
+        )
+    else:
+        model = artifact["model"]
+        meta = artifact["meta"]
+        features = meta["features"]
+
+        # ── Make your pick (blind) ──────────────────────────────────
+        st.subheader("Make your pick")
+        seasons = sorted(ratings["YEAR"].unique(), reverse=True)
+        in_progress_year = (seasons[0] if seasons and seasons[0] > meta["year_max"]
+                            else None)
+        cA, cB = st.columns([1, 2])
+        season = cA.selectbox(
+            "Season", seasons, index=0,
+            format_func=lambda y: f"{y} (in progress)" if y == in_progress_year else str(y))
+        ryear = ratings[ratings["YEAR"] == season]
+        teams = sorted(ryear["TEAM"].unique())
+
+        c1, c2 = st.columns(2)
+        team_a = c1.selectbox("Team A", teams, index=0, key="mvm_a")
+        team_b = c2.selectbox("Team B", teams, index=1 if len(teams) > 1 else 0,
+                              key="mvm_b")
+        loc_label = st.radio(
+            "Where is it played?",
+            [f"🏠 {team_a} home", "⚖️ Neutral court", f"🏠 {team_b} home"],
+            index=1, horizontal=True, key="mvm_loc")
+        location = ("A" if loc_label.endswith(f"{team_a} home")
+                    else "B" if loc_label.endswith(f"{team_b} home") else "N")
+
+        if team_a == team_b:
+            st.info("Pick two different teams.")
+        else:
+            user_pick = st.radio("**Your pick to win**", [team_a, team_b],
+                                 horizontal=True, key="mvm_pick")
+            with st.expander("Optional: confidence & market moneylines"):
+                user_conf = st.slider("How confident are you?", 0.50, 0.99, 0.60,
+                                      help="Stored for later; doesn't affect the W-L record.")
+                mcols = st.columns(2)
+                ml_a = mcols[0].number_input(f"{team_a} moneyline", value=0, step=5,
+                                             help="0 = no line. Enter the real line to settle bets.")
+                ml_b = mcols[1].number_input(f"{team_b} moneyline", value=0, step=5)
+
+            if st.button("🔒 Lock in my pick — then reveal the model's", type="primary"):
+                probs = gm.win_probabilities(team_a, team_b, location, ryear,
+                                             model, features)
+                if probs is None:
+                    st.warning("One of these teams has no ratings for this season.")
+                else:
+                    p_a, p_b = probs
+                    model_pick = team_a if p_a >= p_b else team_b
+                    model_prob = max(p_a, p_b)
+                    ct.add_pick(
+                        season, team_a, team_b, location, user_pick,
+                        model_pick, model_prob, user_conf=round(user_conf, 2),
+                        ml_a=(ml_a or None), ml_b=(ml_b or None))
+                    agree = model_pick == user_pick
+                    st.success(f"Locked **{user_pick}**. 🤖 The model picked "
+                               f"**{model_pick}** ({fmt_pct(model_prob)}) — "
+                               f"{'you agree 🤝' if agree else 'you disagree ⚔️'}.")
+                    st.caption("Enter the result below once the game is played.")
+
+        # ── Awaiting results ────────────────────────────────────────
+        picks = ct.load_picks()
+        pending = picks[picks["status"] == "pending"]
+        st.divider()
+        st.subheader(f"Awaiting results ({len(pending)})")
+        if pending.empty:
+            st.caption("No open games. Lock in a pick above.")
+        else:
+            for r in pending.itertuples(index=False):
+                venue = ("neutral" if r.location == "N"
+                         else f"{r.team_a} home" if r.location == "A"
+                         else f"{r.team_b} home")
+                gc1, gc2, gc3 = st.columns([3, 2, 1])
+                gc1.markdown(f"**{r.team_a}** vs **{r.team_b}**  \n"
+                             f"<small>{r.season} · {venue} · your pick: "
+                             f"{r.user_pick}</small>", unsafe_allow_html=True)
+                winner = gc2.selectbox("Winner", [r.team_a, r.team_b],
+                                       key=f"win_{r.id}", label_visibility="collapsed")
+                if gc3.button("Settle", key=f"settle_{r.id}"):
+                    ct.settle_pick(r.id, winner)
+                    st.rerun()
+
+        # ── Scoreboard ──────────────────────────────────────────────
+        sb = ct.scoreboard(picks)
+        st.divider()
+        st.subheader("🏆 Scoreboard")
+        if sb["n_settled"] == 0:
+            st.info("No settled games yet — lock in some picks and record the "
+                    "results to start the contest.")
+        else:
+            m1, m2 = st.columns(2)
+            m1.metric("🤖 Model record",
+                      f"{sb['model_w']}–{sb['model_l']}",
+                      f"{sb['model_w'] / sb['n_settled']:.0%} correct")
+            m2.metric("🧑 Your record",
+                      f"{sb['user_w']}–{sb['user_l']}",
+                      f"{sb['user_w'] / sb['n_settled']:.0%} correct")
+
+            if sb["disagree"] > 0:
+                lead = ("**you** are" if sb["disagree_user_right"] > sb["disagree_model_right"]
+                        else "**the model** is" if sb["disagree_model_right"] > sb["disagree_user_right"]
+                        else "you're **even**")
+                st.markdown(
+                    f"**The stat that matters — when you disagree** "
+                    f"({sb['disagree']} game{'s' if sb['disagree'] != 1 else ''}): "
+                    f"you were right **{sb['disagree_user_right']}**, the model "
+                    f"**{sb['disagree_model_right']}**. On the games you saw "
+                    f"differently, {lead} ahead. (You agreed on {sb['agree']}.)")
+            else:
+                st.caption("You've agreed with the model on every settled game so "
+                           "far — no head-to-head disagreements yet.")
+
+            if sb["n_user_bets"] or sb["n_model_bets"]:
+                b1, b2 = st.columns(2)
+                b1.metric(f"🤖 Model flat-bet P&L ({sb['n_model_bets']} bets)",
+                          f"${sb['model_pnl']:+,.2f}")
+                b2.metric(f"🧑 Your flat-bet P&L ({sb['n_user_bets']} bets)",
+                          f"${sb['user_pnl']:+,.2f}")
+                st.caption(f"Flat ${ct.STAKE:,.0f} on each pick, at the moneylines "
+                           "you entered. Only games with a line count.")
+
+        settled = picks[picks["status"] == "settled"]
+        if not settled.empty:
+            with st.expander(f"History ({len(settled)} settled)"):
+                hist = settled[["season", "team_a", "team_b", "user_pick",
+                                "model_pick", "actual_winner"]].rename(columns={
+                    "season": "Season", "team_a": "Team A", "team_b": "Team B",
+                    "user_pick": "Your pick", "model_pick": "Model pick",
+                    "actual_winner": "Winner"})
+                st.dataframe(hist[::-1], hide_index=True, width="stretch")
+
+        st.caption("Picks are stored in `data/contest_picks.csv`. On an ephemeral "
+                   "cloud host this resets on restart — durable storage is a later "
+                   "upgrade.")
 
 
 # ──────────────────────────────────────────────────────────────

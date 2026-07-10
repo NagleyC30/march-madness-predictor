@@ -243,7 +243,24 @@ of who's better. Show W-L-D for the model and for me, plus how much each of us
 would have made under **every betting strategy** (item 7's lab). Must be
 automated for 2027-forward games not yet played, with a recurring prompt to lock
 my picks *before* tip-off (no score leakage), and I must not see the model's pick
-when I make mine. -- **TODO / partially data-blocked**
+when I make mine. -- **IN PROGRESS — manual-entry mode DONE (2026-07-10); auto-schedule deferred on data**
+- **Manual-entry mode shipped.** New `contest.py` (store + scoring) + **"Me vs
+  Machine"** page: pick a season/two teams/venue, lock your pick, and *then* the
+  model's pick is revealed (blind entry enforced — the model is only queried
+  inside the lock handler, never rendered before you commit). Both picks are
+  written to `data/contest_picks.csv` with a UTC timestamp; you settle each game
+  later by entering the real winner. Scoreboard: model vs. you W-L, agreement,
+  and the headline **"when you disagree, who's right?"** stat. Optional market
+  moneylines enable a **symmetric flat-bet P&L** (each side flat-bets its own
+  pick — the fair wager when the human gives a pick but not a probability).
+  Verified end-to-end live (lock → pending → settle → scoreboard). `contest_picks.csv`
+  is gitignored (user runtime data); dtype gotcha fixed (empty text cols read as
+  float64 rejected timestamp writes).
+- **Still deferred (auto phase):** the automated weekly slate (needs the 2027
+  schedule / `2027_super_sked.csv`, ~Nov 2026 — same blocker as items 5/11), the
+  recurring "make your picks" prompt (scheduled-tasks/cron), and richer betting
+  strategies (Kelly/+EV) once real closing lines exist. Durable storage (not an
+  ephemeral-cloud CSV) also needed before it's truly "everlasting."
 - **Feasibility: yes, with an honor-system caveat.** The head-to-head engine
   (`game_model`) and the strategy lab already exist; this page is mostly a
   pick-capture + settle + tally layer on top. The hard part is *integrity*, not
@@ -381,7 +398,8 @@ exist. Start the gf's **logo** now regardless (external lead time).
    bake-off numbers.
 4. **Me-vs-Machine contest (item 14)** — build once on calibrated probs. Ship
    manual-entry mode first; wire the schedule feed when `2027_super_sked.csv`
-   lands (~Nov 2026).
+   lands (~Nov 2026). -- **Manual-entry mode DONE (2026-07-10)**; auto-schedule +
+   recurring prompt + Kelly/+EV betting deferred to the data phase.
 5. **Branding pass (items 13 + 16 + Phase-3 item 9)** — rename to **B.O.B.**,
    theme selector, drop in gf's logo; theme every page in one sweep.
 6. **Parked on data** (items 10/11/12): 2027 field, scheduled-games feed, extend
