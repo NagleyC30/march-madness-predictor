@@ -110,7 +110,16 @@ model-implied), add:
   illusory. Decisive tell: **¼-Kelly loses on every window and craters the
   bankroll ($1000→$254, -89% drawdown)** — if the edges were real, Kelly would
   compound them. → strong motivation for Phase 2 (calibrate the model, then see
-  if the +EV edges survive). Backlog to still add: by-seed/by-round slices.
+  if the +EV edges survive).
+- **By-seed / by-round slices — DONE.** `betting_strategies.py` now emits
+  `data/betting_strategies_slices.csv` (Value +EV flat, broken down by round and
+  by the seed of the backed team); the **Betting Simulation** page shows both as
+  a "Where does the edge live?" pair of tables. **Finding:** the edge isn't
+  uniform — for `all_prior` it concentrates in the **first round (+10% ROI, 326
+  bets)** and on **double-digit-seed underdogs (9–12: +18%, 13–16: +15%)**, and
+  the favorite tiers (1–4, 5–8) lose — consistent with the model being
+  overconfident on chalk. Deep-round slices (F4 +52% on 8 bets, Chip on 4) are
+  noise. Reinforces the Phase-2 calibration motivation.
 
 ---
 
@@ -285,7 +294,7 @@ do all **branding** (rename + theme + logo) as one final sweep after the new pag
 exist. Start the gf's **logo** now regardless (external lead time).
 
 1. **Finish Phase-1 betting backlog** — by-seed / by-round slices in the strategy
-   lab (small, already scaffolded).
+   lab (small, already scaffolded). -- **DONE (2026-07-10)**
 2. **Phase 2: model bake-off + calibration (item 8)** — the pivotal unblocker.
    Calibrating/adding models (incl. **MLP** = the "neural net") changes every
    downstream number, so it comes before the new display pages. *In parallel:

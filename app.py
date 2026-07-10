@@ -64,7 +64,9 @@ def load_strategy_lab():
         return None
     games = bs.load_games(path)
     summary, equity = bs.run_all(games)
-    return {"games": games, "summary": summary, "equity": equity}
+    slices = pd.concat([bs.run_slices(games, "round"),
+                        bs.run_slices(games, "seed")], ignore_index=True)
+    return {"games": games, "summary": summary, "equity": equity, "slices": slices}
 
 
 @st.cache_data
@@ -1019,6 +1021,47 @@ elif page == "Betting Simulation":
             "them, not destroy them. Treat this as a **lead to validate with a "
             "better-calibrated model**, not a proven way to beat the market."
         )
+
+        # ── Where does the edge live? (by round / by seed) ──────────
+        sl_all = lab.get("slices")
+        if sl_all is not None and not sl_all.empty:
+            st.subheader("Where does the edge live?")
+            st.markdown(
+                "The Value (+EV, flat) strategy, broken down by the **round** of "
+                "the game and the **seed of the team it backs** — to see whether "
+                "any slice actually beats the closing line, or whether the overall "
+                "profit hides pockets that don't."
+            )
+
+            def _slice_table(dim, dim_label):
+                d = sl_all[(sl_all["window"] == lab_window) &
+                           (sl_all["slice_by"] == dim)]
+                d = d[["slice", "bets", "win_rate", "roi_pct", "avg_edge_pct"]].rename(
+                    columns={"slice": dim_label, "bets": "Bets", "win_rate": "Win %",
+                             "roi_pct": "ROI %", "avg_edge_pct": "Avg edge %"})
+                st.dataframe(
+                    d.style.format({"Win %": "{:.1f}", "ROI %": "{:+.1f}",
+                                    "Avg edge %": "{:+.1f}"})
+                    .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
+                         else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+                         subset=["ROI %"]),
+                    hide_index=True, width="stretch")
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.caption("**By round**")
+                _slice_table("round", "Round")
+            with c2:
+                st.caption("**By seed of the backed team**")
+                _slice_table("seed", "Seed")
+            st.caption(
+                "Read the deep-round rows skeptically — the Final Four and "
+                "Championship slices are only a handful of bets each, so their "
+                "eye-popping ROI is mostly noise. The steadier signal: the edge "
+                "concentrates in the **first round** and on **double-digit-seed "
+                "underdogs**, and evaporates on the favorites — consistent with "
+                "the model being overconfident on chalk."
+            )
 
 
 # ──────────────────────────────────────────────────────────────

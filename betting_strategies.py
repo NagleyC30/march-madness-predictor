@@ -75,12 +75,14 @@ def devig_prob(ml, ml_opp):
 def _sides(row):
     """Both bettable sides of a game: the model's pick and its opponent. Each is
     a dict with the model prob for that side, its real moneyline, whether it won,
-    and the opposing moneyline (for de-vig)."""
+    the opposing moneyline (for de-vig), and that side's tournament seed (so bets
+    can be sliced by the seed of the team actually backed)."""
     out = [{"p": row["model_p"], "ml": row["ml"], "won": bool(row["correct"]),
-            "ml_opp": row["ml_opp"]}]
+            "ml_opp": row["ml_opp"], "seed": row.get("pick_seed")}]
     if pd.notna(row["ml_opp"]):
         out.append({"p": 1.0 - row["model_p"], "ml": row["ml_opp"],
-                    "won": not bool(row["correct"]), "ml_opp": row["ml"]})
+                    "won": not bool(row["correct"]), "ml_opp": row["ml"],
+                    "seed": row.get("opp_seed")})
     return out
 
 
@@ -210,6 +212,97 @@ def run_all(games, window=None, strategies=STRATEGIES):
     return pd.DataFrame(srows), equity
 
 
+# ──────────────────────────────────────────────────────────────
+# SLICES — where does the (claimed) edge actually live?
+# ──────────────────────────────────────────────────────────────
+#
+# The strategy table above answers "which staking/selection rule wins overall."
+# The roadmap's open question (item 7) is finer: does *any* slice — by round, or
+# by the seed of the team we back — beat the close? These reuse the Value (+EV,
+# flat) selection and just group its individual bets. Flat staking makes each
+# bet's P&L order-independent, so a slice's ROI is simply its bets' net / staked.
+
+SEED_TIERS = [(1, 4, "1–4"), (5, 8, "5–8"), (9, 12, "9–12"), (13, 16, "13–16")]
+
+
+def seed_tier(seed):
+    """Bucket a tournament seed into a 4-wide tier label, or None if unknown."""
+    if pd.isna(seed):
+        return None
+    for lo, hi, label in SEED_TIERS:
+        if lo <= int(seed) <= hi:
+            return label
+    return None
+
+
+def bet_log(games, strategy):
+    """Per-bet detail for a flat-staked strategy over one window's games — one row
+    per bet placed, tagged with round and the backed side's seed. Used for
+    slicing; flat stake keeps each bet's P&L self-contained."""
+    recs = []
+    for row in _ordered(games).itertuples(index=False):
+        d = row._asdict()
+        side = strategy["select"](d)
+        if side is None:
+            continue
+        b = net_odds(side["ml"])
+        won = bool(side["won"])
+        edge = (side["p"] - devig_prob(side["ml"], side["ml_opp"])) \
+            if pd.notna(side.get("ml_opp")) else float("nan")
+        recs.append({
+            "year": int(d["year"]), "round": d["round"], "seed": side.get("seed"),
+            "won": won, "stake": FLAT_UNIT,
+            "pnl": FLAT_UNIT * b if won else -FLAT_UNIT, "edge": edge,
+        })
+    return pd.DataFrame(recs)
+
+
+def summarize_bets(df):
+    """Roll a bet log (or one slice of it) up into the standard metric row."""
+    n = len(df)
+    won = int(df["won"].sum()) if n else 0
+    staked = float(df["stake"].sum()) if n else 0.0
+    pnl = float(df["pnl"].sum()) if n else 0.0
+    edge = df["edge"].dropna() if n else df.get("edge", pd.Series(dtype=float))
+    return {
+        "bets": n, "won": won, "lost": n - won,
+        "staked": round(staked, 2), "net_pnl": round(pnl, 2),
+        "roi_pct": round(pnl / staked * 100, 1) if staked else 0.0,
+        "win_rate": round(won / n * 100, 1) if n else 0.0,
+        "avg_edge_pct": round(edge.mean() * 100, 1) if len(edge) else 0.0,
+    }
+
+
+def run_slices(games, by, strategy=None, window=None):
+    """Break the Value (+EV, flat) strategy's bets down by ``round`` or ``seed``
+    (of the backed side), per training window. Returns one summary row per
+    (window, slice), ordered naturally within each dimension."""
+    strategy = strategy or STRATEGIES[1]      # Value (+EV, flat)
+    if by == "round":
+        key, order = (lambda log: log["round"]), ROUND_ORDER
+    elif by == "seed":
+        key = lambda log: log["seed"].map(seed_tier)
+        order = {label: i for i, (_, _, label) in enumerate(SEED_TIERS)}
+    else:
+        raise ValueError(f"slice dimension must be 'round' or 'seed', got {by!r}")
+
+    windows = [window] if window else sorted(games["window"].unique())
+    rows = []
+    for w in windows:
+        log = bet_log(games[games["window"] == w], strategy)
+        if log.empty:
+            continue
+        log = log.assign(_slice=key(log))
+        for sl, grp in log.dropna(subset=["_slice"]).groupby("_slice"):
+            rows.append({"window": w, "strategy": strategy["name"],
+                         "slice_by": by, "slice": sl, **summarize_bets(grp)})
+    out = pd.DataFrame(rows)
+    if not out.empty:
+        out["_o"] = out["slice"].map(order).fillna(99)
+        out = out.sort_values(["window", "_o"]).drop(columns="_o").reset_index(drop=True)
+    return out
+
+
 def load_games(path=GAMES_FILE):
     df = pd.read_csv(path)
     df["correct"] = df["correct"].astype(bool)
@@ -227,6 +320,11 @@ def main():
     equity.to_csv(os.path.join(DATA_DIR, "betting_strategies_equity.csv"),
                   index=False)
 
+    slices = pd.concat([run_slices(games, "round"), run_slices(games, "seed")],
+                       ignore_index=True)
+    slices.to_csv(os.path.join(DATA_DIR, "betting_strategies_slices.csv"),
+                  index=False)
+
     # Headline: the most-data window.
     w = "all_prior"
     print(f"Strategy results for window '{w}' "
@@ -239,8 +337,18 @@ def main():
         print(f"{r.strategy:26} {r.bets:>5} {r.win_rate:>6.1f} {r.roi_pct:>+7.1f} "
               f"{r.avg_edge_pct:>+6.1f} {r.final_bankroll:>8.0f} "
               f"{r.max_drawdown_pct:>7.1f}")
-    print(f"\nWrote betting_strategies_summary.csv ({len(summary)} rows) and "
-          f"betting_strategies_equity.csv ({len(equity)} rows).")
+    # Where does the Value (+EV, flat) edge live for that window?
+    for by in ("round", "seed"):
+        sl = run_slices(games, by, window=w)
+        print(f"\nValue (+EV, flat) by {by} — window '{w}':")
+        print(f"  {by:>12} {'bets':>5} {'win%':>6} {'ROI%':>7} {'edge%':>6}")
+        for r in sl.itertuples(index=False):
+            print(f"  {str(r.slice):>12} {r.bets:>5} {r.win_rate:>6.1f} "
+                  f"{r.roi_pct:>+7.1f} {r.avg_edge_pct:>+6.1f}")
+
+    print(f"\nWrote betting_strategies_summary.csv ({len(summary)} rows), "
+          f"betting_strategies_equity.csv ({len(equity)} rows), and "
+          f"betting_strategies_slices.csv ({len(slices)} rows).")
 
 
 if __name__ == "__main__":
