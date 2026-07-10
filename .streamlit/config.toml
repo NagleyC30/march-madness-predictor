@@ -1,5 +1,6 @@
 [theme]
-primaryColor = "#FF4B4B"
+# B.O.B. default accent — "Hardwood" orange (see branding.py THEMES).
+primaryColor = "#E8590C"
 base = "light"
 
 [server]

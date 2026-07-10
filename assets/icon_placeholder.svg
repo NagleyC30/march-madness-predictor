@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="B.O.B. icon">
+  <!-- Placeholder square icon (favicon / collapsed-sidebar mark). Replace with
+       assets/icon.svg (or icon.png). -->
+  <circle cx="32" cy="32" r="30" fill="#E8590C"/>
+  <g stroke="#7a2e06" stroke-width="2.6" fill="none">
+    <circle cx="32" cy="32" r="30"/>
+    <path d="M32 2 V62"/>
+    <path d="M2 32 H62"/>
+    <path d="M11 10 C24 24 24 40 11 54"/>
+    <path d="M53 10 C40 24 40 40 53 54"/>
+  </g>
+</svg>

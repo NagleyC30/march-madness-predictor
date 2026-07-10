@@ -1,12 +1,14 @@
-# 🏀 March Madness Bracket Predictor
+# 🏀 B.O.B. — Betting on Basketball
 
-A machine-learning model that predicts NCAA men's basketball tournament games
+**B.O.B.** is a machine-learning model that predicts NCAA men's basketball games
 from **KenPom** and **Barttorvik** team-efficiency ratings, wrapped in an
-interactive [Streamlit](https://streamlit.io) dashboard.
+interactive [Streamlit](https://streamlit.io) dashboard — built to ask one
+question: **can it beat the market?**
 
-The model is validated **walk-forward**: to predict any tournament, it only
-trains on seasons that happened *before* it — no looking into the future. Across
-2009–2025 it reaches roughly **71% per-game accuracy**.
+The model is validated **walk-forward**: to predict any game, it only trains on
+games that happened *before* it — no looking into the future. Across 2009–2025 it
+reaches roughly **71% per-game accuracy**. The dashboard has a swappable colour
+**theme** (pick one in the sidebar) and a logo slot (`assets/` — see its README).
 
 ## ✨ Features
 
