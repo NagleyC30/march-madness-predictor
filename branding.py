@@ -6,12 +6,14 @@
 # the swappable colour themes, and the logo so every page picks them up from one
 # place.
 #
-# Theme mechanism: Streamlit's base light/dark toggle stays native (the ⋮ menu).
-# On top of that we let the user pick an **accent palette** at runtime by
-# injecting CSS — it recolours the things CSS can reach cohesively (primary
-# buttons, links, headers, the brand mark, focus rings). Native widget accents
-# (slider/checkbox) follow the config.toml primaryColor and aren't runtime-
-# swapped; the palettes are built around that default so it stays coherent.
+# Theme mechanism: the *base* palette (hardwood cream background, basketball-
+# orange primary, warm text/borders/charts) lives natively in
+# .streamlit/config.toml so it themes every surface Streamlit renders. On top of
+# that we let the user pick an **accent palette** at runtime by injecting CSS —
+# it recolours the accent-driven surfaces (primary buttons, links, the brand
+# mark, the accent bar, sidebar selection) so a different accent stays cohesive.
+# The default "Hardwood" accent matches config.toml's primaryColor exactly, so
+# with no change the runtime layer is a no-op and native widgets stay in step.
 
 import os
 
@@ -60,32 +62,55 @@ def render_logo():
 
 
 def apply_theme(accent):
-    """Inject CSS so the chosen accent recolours the app's reachable surfaces."""
+    """Inject CSS so the chosen accent recolours the app's reachable surfaces.
+
+    The hardwood base (background, text, borders, charts, sidebar) comes from
+    config.toml; this only overrides the accent-driven bits so a non-default
+    accent choice stays cohesive on top of the native theme."""
     st.markdown(
         f"""
         <style>
           :root {{ --bob-accent: {accent}; }}
-          /* Primary buttons */
+
+          /* Primary buttons (cover old + new Streamlit selectors) */
           .stButton > button[kind="primary"],
-          .stButton > button[data-testid="baseButton-primary"] {{
-              background-color: var(--bob-accent);
-              border-color: var(--bob-accent);
+          .stButton > button[data-testid="baseButton-primary"],
+          [data-testid="stBaseButton-primary"] {{
+              background-color: var(--bob-accent) !important;
+              border-color: var(--bob-accent) !important;
           }}
-          .stButton > button[kind="primary"]:hover {{
+          .stButton > button[kind="primary"]:hover,
+          [data-testid="stBaseButton-primary"]:hover {{
               filter: brightness(0.92);
-              border-color: var(--bob-accent);
+              border-color: var(--bob-accent) !important;
           }}
+
           /* Links + the brand mark */
-          a, .bob-brand-name {{ color: var(--bob-accent); }}
-          /* Page + section headings get an accent-tinted top rule feel */
-          h1 span, h2 span {{ color: inherit; }}
+          a, .bob-brand-name {{ color: var(--bob-accent) !important; }}
+
+          /* The accent bar under the brand header — a painted baseline stripe */
           div.bob-accent-bar {{
-              height: 4px; border-radius: 2px; margin: .1rem 0 1rem 0;
-              background-color: var(--bob-accent);
+              height: 5px; border-radius: 3px; margin: .1rem 0 1.1rem 0;
+              background: linear-gradient(90deg, var(--bob-accent), #C77D2E);
           }}
+
+          /* Section headings get an accent left-rule, like a court sideline */
+          .main h2, .main h3 {{
+              border-left: 4px solid var(--bob-accent);
+              padding-left: .55rem;
+          }}
+
+          /* Metric values in the accent so KPIs pop off the hardwood */
+          [data-testid="stMetricValue"] {{ color: var(--bob-accent); }}
+
           /* Sidebar nav: highlight the selected page in the accent */
           section[data-testid="stSidebar"] label[data-baseweb="radio"] div:first-child {{
               border-color: var(--bob-accent);
+          }}
+
+          /* Tabs: underline the active tab in the accent */
+          .stTabs [data-baseweb="tab-highlight"] {{
+              background-color: var(--bob-accent) !important;
           }}
         </style>
         """,
