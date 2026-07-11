@@ -138,9 +138,15 @@ def theme_selector(container=None):
     applies the theme. Persists across reruns via session state."""
     box = container or st.sidebar
     names = list(THEMES)
+    # Seed the default ONCE, then let the widget own its value through `key`
+    # alone. Passing both `index` (derived from session_state) and `key` is the
+    # bug that crashed the app right after the first theme change: once
+    # `bob_theme` is in session_state, current Streamlit raises rather than
+    # letting a default coexist with a keyed value.
+    if "bob_theme" not in st.session_state:
+        st.session_state["bob_theme"] = DEFAULT_THEME
     choice = box.selectbox(
         "🎨 Theme", names,
-        index=names.index(st.session_state.get("bob_theme", DEFAULT_THEME)),
         format_func=lambda n: f"{n} — {THEMES[n][1]}",
         key="bob_theme",
     )
