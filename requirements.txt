@@ -1,11 +1,21 @@
-streamlit>=1.58
-pandas>=2.2
-numpy>=1.26
+# Deploy stack, pinned for reproducible Streamlit Community Cloud builds.
+#
+# These are the versions the app is developed and verified on (Python 3.12/3.13).
+# Without upper bounds, Cloud resolved everything to bleeding-edge on Python 3.14
+# and Streamlit segfaulted at startup — so every line has a ceiling now.
+#
+# IMPORTANT: keep the Cloud app's Python version at 3.12 or 3.13
+# (dashboard → Settings → Advanced settings). Python 3.14's wheels for this
+# native stack (numpy/pandas/pyarrow) crash on boot.
+streamlit>=1.58,<1.60
+pandas>=2.2,<3.1
+numpy>=1.26,<2.6
+scipy>=1.13,<1.19
 # Pinned to the minor the committed game_model.joblib was trained with, so a
 # newer scikit-learn can't silently break unpickling on redeploy.
 scikit-learn>=1.9,<1.10
-joblib>=1.4
-altair>=5.2
+joblib>=1.4,<1.6
+altair>=5.2,<7
 # Only needed offline by fetch_odds.py to read the sportsbook xlsx archive; the
 # deployed app reads the committed CSVs, so this is a dev-time dependency.
-openpyxl>=3.1
+openpyxl>=3.1,<3.2
