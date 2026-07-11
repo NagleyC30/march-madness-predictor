@@ -1,7 +1,75 @@
+# B.O.B. — Betting on Basketball. Native theme: "Hardwood" — a light maple
+# basketball court (warm cream background) with basketball-orange accents.
+# Streamlit >=1.58 renders this natively; branding.py layers a runtime accent
+# picker on top (see THEMES / apply_theme).
+
 [theme]
-# B.O.B. default accent — "Hardwood" orange (see branding.py THEMES).
-primaryColor = "#E8590C"
 base = "light"
+
+# Core palette ────────────────────────────────────────────────
+primaryColor = "#E8590C"              # basketball orange — buttons, accents
+backgroundColor = "#FBF3E5"           # light maple hardwood (main canvas)
+secondaryBackgroundColor = "#F2E1C4"  # warmer hardwood — cards, tables, inputs
+textColor = "#2C1E10"                 # dark roasted brown (high contrast on cream)
+linkColor = "#C7500B"                 # deeper orange so links read on cream
+borderColor = "#E2CB9F"               # hardwood grain
+codeBackgroundColor = "#F2E1C4"
+codeTextColor = "#7A3B0A"
+
+# Shape + borders ─────────────────────────────────────────────
+baseRadius = "10px"                   # friendly, rounded — like a basketball
+buttonRadius = "10px"
+showWidgetBorder = true
+showSidebarBorder = true
+
+# Typography ──────────────────────────────────────────────────
+headingFontWeights = [800, 700, 700, 600, 600, 600]
+baseFontWeight = 400
+linkUnderline = false
+
+# Semantic colors (metrics, alerts) tuned warm ────────────────
+orangeColor = "#E8590C"
+greenColor = "#2F9E44"                # gains / "beats the market"
+redColor = "#D6336C"                  # losses
+yellowColor = "#E67700"
+grayColor = "#8A7355"
+
+# Chart palette — hardwood-court basketball tones ─────────────
+chartCategoricalColors = [
+    "#E8590C",  # basketball orange
+    "#1C6DD0",  # court blue
+    "#2F9E44",  # net green
+    "#8B5A2B",  # hardwood brown
+    "#7048E8",  # buzzer purple
+    "#C77D2E",  # amber leather
+    "#495057",  # charcoal (referee)
+    "#D6336C",  # whistle pink
+]
+chartSequentialColors = [
+    "#FFF4E6",
+    "#FFE8CC",
+    "#FFD8A8",
+    "#FFC078",
+    "#FFA94D",
+    "#FF922B",
+    "#F76707",
+    "#E8590C",
+    "#D9480F",
+    "#B34009",
+]
+
+# Dataframe styling ───────────────────────────────────────────
+dataframeBorderColor = "#E2CB9F"
+dataframeHeaderBackgroundColor = "#EAD3AC"
+
+# Sidebar — a shade deeper for the "bench" ────────────────────
+[theme.sidebar]
+backgroundColor = "#F2E1C4"
+secondaryBackgroundColor = "#E9D2AF"
+codeBackgroundColor = "#E9D2AF"
+textColor = "#2C1E10"
+borderColor = "#DCC49A"
+primaryColor = "#E8590C"
 
 [server]
 headless = true

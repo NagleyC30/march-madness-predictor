@@ -839,7 +839,7 @@ elif page == "Backtest & Calibration":
                         scale=alt.Scale(domain=[0.5, 0.9]), axis=alt.Axis(format="%")),
                 y=alt.Y("label:N", title=None, sort="-x"),
                 tooltip=["label", alt.Tooltip("accuracy:Q", format=".1%"), "n"],
-                color=alt.value("#FF4B4B"),
+                color=alt.value("#E8590C"),
             ).properties(height=200), width="stretch")
         st.caption("Non-conference games (more mismatches) are easiest; "
                    "postseason games (evenly matched) are hardest.")
@@ -871,7 +871,7 @@ elif page == "Backtest & Calibration":
             size=alt.Size("n:Q", title="Games", scale=alt.Scale(range=[20, 500])),
             tooltip=[alt.Tooltip("Predicted:Q", format=".1%"),
                      alt.Tooltip("Actual:Q", format=".1%"), "n"],
-            color=alt.value("#1f77b4"),
+            color=alt.value("#1C6DD0"),
         )
         st.altair_chart((diag + pts).properties(height=400), width="stretch")
         st.caption("Bubble size = number of games in that probability range.")
@@ -922,7 +922,7 @@ elif page == "Backtest & Calibration":
                     color=alt.Color("Ratings:N", title=None,
                                     scale=alt.Scale(
                                         domain=["Point-in-time", "Season-aggregate"],
-                                        range=["#1f77b4", "#FF4B4B"])),
+                                        range=["#1C6DD0", "#E8590C"])),
                     tooltip=["YEAR", "Ratings",
                              alt.Tooltip("accuracy:Q", format=".1%")],
                 ).properties(height=320), width="stretch")
@@ -969,7 +969,7 @@ elif page == "Model Accuracy":
                         scale=alt.Scale(domain=[0.5, 0.8]), axis=alt.Axis(format="%")),
                 y=alt.Y("window:N", title="Training window", sort="-x"),
                 tooltip=[alt.Tooltip("indep_acc:Q", format=".1%")],
-                color=alt.value("#FF4B4B"),
+                color=alt.value("#E8590C"),
             ).properties(height=200),
             width="stretch",
         )
@@ -1009,7 +1009,7 @@ elif page == "Model Accuracy":
                         axis=alt.Axis(format="%")),
                 tooltip=["round_label",
                          alt.Tooltip("accuracy:Q", format=".1%"), "games"],
-                color=alt.value("#1f77b4"),
+                color=alt.value("#1C6DD0"),
             ).properties(height=300),
             width="stretch",
         )
@@ -1145,7 +1145,7 @@ elif page == "Model Bake-off":
                 y=alt.Y("model:N", sort="-x", title=None),
                 color=alt.Color("beats_chalk:N", title="Beats chalk?",
                                 scale=alt.Scale(domain=[True, False],
-                                                range=["#2ca02c", "#d62728"])),
+                                                range=["#2F9E44", "#D6336C"])),
                 tooltip=["model", "total", "avg_per_year", "pct_of_max"],
             )
             rule = None
@@ -1242,7 +1242,7 @@ elif page == "How the Models Work":
         "conference never enter."
     )
     imp = expl["importance"].copy()
-    chart = alt.Chart(imp).mark_bar(color="#1f77b4").encode(
+    chart = alt.Chart(imp).mark_bar(color="#1C6DD0").encode(
         x=alt.X("importance:Q", title="Importance"),
         y=alt.Y("feature:N", sort="-x", title=None),
         tooltip=["feature", alt.Tooltip("importance:Q", format=".3f")],
@@ -1378,8 +1378,8 @@ elif page == "Betting Simulation":
         st.dataframe(
             disp.style.format({"Net P&L ($)": "{:+.2f}", "ROI %": "{:+.1f}",
                                "Avg real line": "{:+.0f}"}, na_rep="—")
-            .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
-                 else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+            .map(lambda v: "color: #2F9E44" if isinstance(v, (int, float)) and v > 0
+                 else ("color: #D6336C" if isinstance(v, (int, float)) and v < 0 else ""),
                  subset=["Net P&L ($)", "ROI %"]),
             hide_index=True, width="stretch",
         )
@@ -1533,8 +1533,8 @@ elif page == "Betting Simulation":
             disp.style.format({"Win %": "{:.1f}", "ROI %": "{:+.1f}",
                                "Avg edge %": "{:+.1f}", "End bankroll ($)": "{:,.0f}",
                                "Max drawdown %": "{:.1f}"})
-            .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
-                 else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+            .map(lambda v: "color: #2F9E44" if isinstance(v, (int, float)) and v > 0
+                 else ("color: #D6336C" if isinstance(v, (int, float)) and v < 0 else ""),
                  subset=["ROI %"]),
             hide_index=True, width="stretch",
         )
@@ -1589,8 +1589,8 @@ elif page == "Betting Simulation":
                 st.dataframe(
                     d.style.format({"Win %": "{:.1f}", "ROI %": "{:+.1f}",
                                     "Avg edge %": "{:+.1f}"})
-                    .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
-                         else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+                    .map(lambda v: "color: #2F9E44" if isinstance(v, (int, float)) and v > 0
+                         else ("color: #D6336C" if isinstance(v, (int, float)) and v < 0 else ""),
                          subset=["ROI %"]),
                     hide_index=True, width="stretch")
 
@@ -1639,8 +1639,8 @@ elif page == "Betting Simulation":
                 comp.style.format({"ROI % (raw)": "{:+.1f}", "ROI % (calib)": "{:+.1f}",
                                    "ROI Δ": "{:+.1f}", "Edge % (raw)": "{:+.1f}",
                                    "Edge % (calib)": "{:+.1f}"})
-                .map(lambda v: "color: #2ca02c" if isinstance(v, (int, float)) and v > 0
-                     else ("color: #d62728" if isinstance(v, (int, float)) and v < 0 else ""),
+                .map(lambda v: "color: #2F9E44" if isinstance(v, (int, float)) and v > 0
+                     else ("color: #D6336C" if isinstance(v, (int, float)) and v < 0 else ""),
                      subset=["ROI % (raw)", "ROI % (calib)"]),
                 hide_index=True, width="stretch",
             )
@@ -1790,7 +1790,7 @@ elif page == "Custom Metric":
                                         "kind:N", title=None,
                                         scale=alt.Scale(
                                             domain=["Your metric", "Existing feature"],
-                                            range=["#FF4B4B", "#9aa0a6"])),
+                                            range=["#E8590C", "#8A7355"])),
                                     tooltip=["feature",
                                              alt.Tooltip("importance:Q", format="+.4f"),
                                              "rank"],
