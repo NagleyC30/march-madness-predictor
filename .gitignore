@@ -29,6 +29,7 @@ data/odds_cache/
 # so only bet_games.csv is committed (regenerate all with: python betting_strategies.py).
 data/betting_strategies_summary.csv
 data/betting_strategies_equity.csv
+data/betting_strategies_edgesweep.csv
 
 # Me-vs-Machine contest store — user-generated at runtime, mutates on every
 # pick/settle. Not committed (the app creates it on first use).

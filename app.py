@@ -70,7 +70,9 @@ def load_strategy_lab():
     summary, equity = bs.run_all(games)
     slices = pd.concat([bs.run_slices(games, "round"),
                         bs.run_slices(games, "seed")], ignore_index=True)
-    out = {"games": games, "summary": summary, "equity": equity, "slices": slices}
+    sweep = bs.run_edge_sweep(games)
+    out = {"games": games, "summary": summary, "equity": equity,
+           "slices": slices, "edge_sweep": sweep}
 
     # Calibrated twin (backtest_calibrated.py): same bets, isotonic-calibrated
     # probabilities. Lets the lab put raw vs calibrated ROI side by side.
@@ -1587,8 +1589,27 @@ elif page == "Betting Lab":
             "game** whether the model's probability beats the **real price** "
             "(+EV) — on *either* side — and vary **how you stake**. "
             f"Bankroll **${bs.START_BANKROLL:,.0f}**, flat unit **${bs.FLAT_UNIT:,.0f}**, "
-            f"**{bs.KELLY_FRACTION:g}-Kelly** for the Kelly strategy."
+            f"Kelly runs at **¼ / ⅛ / 1⁄10** of full Kelly."
         )
+        with st.expander("What the strategies are"):
+            st.markdown(
+                "- **Model chalk** — the item-3 baseline: flat-bet the pick's "
+                "moneyline when the model is ≥ -200 confident.\n"
+                "- **Value (+EV, flat / ¼- / ⅛- / 1⁄10-Kelly)** — bet whichever "
+                "side is positive-EV against the real price; the Kelly variants "
+                "size by the claimed edge (smaller fractions are gentler — watch "
+                "the drawdown fall as the fraction shrinks).\n"
+                "- **Value — underdogs only / first round / dog seeds ≥9** — the "
+                "same +EV rule restricted to the pockets the slices flagged, now "
+                "as stakeable strategies so you can see whether the pocket holds up "
+                "with its own equity curve and drawdown.\n"
+                "- **Value — edge ≥ 3%** — +EV bets whose de-vigged edge clears 3% "
+                "(see the *edge frontier* below for the full sweep).\n"
+                "- **Fade chalk (dog ML, 80–98%)** — contrarian: when the model "
+                "rates its favorite in its measured *overconfident* band, back the "
+                "**dog's** moneyline instead. A direct test of whether the "
+                "overconfidence is big enough to bet against."
+            )
         lab_windows = sorted(lab["summary"]["window"].unique())
         lab_window = st.selectbox(
             "Model / training window", lab_windows,
@@ -1634,12 +1655,54 @@ elif page == "Betting Lab":
             "longer-training windows — but not the shorter ones, and even there "
             "only about half the individual tournaments win (a couple of outlier "
             "years carry it). The model is also measurably **overconfident** on "
-            "favorites, so some of its 'edge' is illusory. The tell: **¼-Kelly**, "
-            "which sizes bets by the claimed edge, loses on every window and "
-            "craters the bankroll — if the edges were real, Kelly would compound "
-            "them, not destroy them. Treat this as a **lead to validate with a "
-            "better-calibrated model**, not a proven way to beat the market."
+            "favorites, so some of its 'edge' is illusory. The tell: **Kelly** "
+            "staking, which sizes by the claimed edge, loses on every window — "
+            "gentler fractions (⅛, 1⁄10) bleed slower than ¼-Kelly but still don't "
+            "profit, and if the edges were real Kelly would compound them. And "
+            "**fading the overconfident chalk loses too** (~−16%): the favorites "
+            "win ~83% where the model says ~90% — overconfident, yes, but 83% "
+            "still clears the dog's break-even, so the miscalibration isn't big "
+            "enough to bet against. Treat the +EV pockets as a **lead to validate "
+            "with a better-calibrated model**, not a proven way to beat the market."
         )
+
+        # ── Edge-threshold frontier ─────────────────────────────────
+        sweep = lab.get("edge_sweep")
+        if sweep is not None and not sweep.empty:
+            st.subheader("Edge-threshold frontier")
+            st.markdown(
+                "The **Value — edge ≥ 3%** strategy picks one arbitrary cutoff. "
+                "This sweeps the **minimum +EV edge** a bet must clear: tighten it "
+                "and each bet is higher-conviction, but the sample shrinks. Where "
+                "ROI peaks and then falls is the line between *signal* and merely "
+                "*cutting sample*."
+            )
+            sw = sweep[sweep["window"] == lab_window].sort_values("edge_min_pct")
+            line = alt.Chart(sw).mark_line(point=True, color="#E8590C").encode(
+                x=alt.X("edge_min_pct:Q", title="Minimum required edge (%)"),
+                y=alt.Y("roi_pct:Q", title="ROI %"),
+                tooltip=[alt.Tooltip("edge_min_pct:Q", title="Edge ≥", format=".0f"),
+                         "bets", alt.Tooltip("roi_pct:Q", format="+.1f")],
+            )
+            zero = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(
+                strokeDash=[4, 4], color="gray").encode(y="y:Q")
+            st.altair_chart((line + zero).properties(height=300), width="stretch")
+            sw_disp = sw[["edge_min_pct", "bets", "win_rate", "roi_pct"]].rename(
+                columns={"edge_min_pct": "Edge ≥ (%)", "bets": "Bets",
+                         "win_rate": "Win %", "roi_pct": "ROI %"})
+            st.dataframe(
+                sw_disp.style.format({"Edge ≥ (%)": "{:.0f}", "Win %": "{:.1f}",
+                                      "ROI %": "{:+.1f}"})
+                .map(lambda v: "color: #2F9E44" if isinstance(v, (int, float)) and v > 0
+                     else ("color: #D6336C" if isinstance(v, (int, float)) and v < 0 else ""),
+                     subset=["ROI %"]),
+                hide_index=True, width="stretch",
+            )
+            st.caption(
+                "On the longest window the ROI peaks around a **3–5% required "
+                "edge** and falls off by 7% as the bet count thins — a modest sweet "
+                "spot, still resting on the same fragile, uncalibrated edge."
+            )
 
         # ── Where does the edge live? (by round / by seed) ──────────
         sl_all = lab.get("slices")
