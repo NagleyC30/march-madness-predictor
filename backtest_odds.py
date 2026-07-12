@@ -11,7 +11,7 @@
 #     1. Train on prior seasons only (mm_model.train_best_model).
 #     2. For every game the tournament actually played, ask the model who wins
 #        and how confidently (its implied moneyline).
-#     3. At each confidence threshold (-200, -250, -300, -350), place a $10 bet
+#     3. At each confidence threshold (-200, -250, -300, -350), place a $100 bet
 #        on the model's pick ONLY when it is at least that confident.
 #
 # Two strategies are settled side by side on the SAME selected bets:
@@ -43,8 +43,11 @@ import mm_model as mm
 import fetch_odds as fo
 
 DATA_DIR = "data"
-STAKE = 10.0
-SPREAD_ODDS = -110      # standard point-spread juice for the flip strategy
+STAKE = 100.0
+# Fallback point-spread juice for the flip strategy. odds.csv carries the spread
+# NUMBER but not always its PRICE, so when a real per-team spread price is present
+# (SPREAD_PRICE_AWAY/HOME) we settle at that; otherwise we assume standard -110.
+SPREAD_ODDS = -110
 # NCAA tournament window (month-day). Excludes November-February regular-season
 # meetings between two teams that also met in March; conference tourneys can
 # start ~March 10, so we anchor on Selection Sunday's neighbourhood and, for any
@@ -62,19 +65,26 @@ def _mmdd(date_str):
 def load_odds_lookup():
     """Map (year, frozenset{team_key, team_key}) -> per-team real closing lines
     for the latest in-window meeting of each pair:
-        {'ml': {key: moneyline}, 'spread': {key: spread}, 'score': {key: score}}
-    Missing spread/score cells are simply absent from their sub-dict."""
+        {'ml': {key: moneyline}, 'spread': {key: spread},
+         'spread_price': {key: american_price}, 'score': {key: score}}
+    Missing spread/price/score cells are simply absent from their sub-dict; when a
+    spread has no real price the flip strategy falls back to -110."""
     odds = pd.read_csv(os.path.join(DATA_DIR, "odds.csv"))
+    has_spread_price = {"SPREAD_PRICE_AWAY", "SPREAD_PRICE_HOME"}.issubset(odds.columns)
     odds["MMDD"] = odds["DATE"].map(_mmdd)
     odds = odds[odds["MMDD"] >= TOURNEY_MMDD_MIN].sort_values(["YEAR", "DATE"])
     lookup = {}
     for r in odds.itertuples(index=False):
         key = (int(r.YEAR), frozenset((r.AWAY_KEY, r.HOME_KEY)))
         game = {"ml": {r.AWAY_KEY: int(r.ML_AWAY), r.HOME_KEY: int(r.ML_HOME)},
-                "spread": {}, "score": {}}
+                "spread": {}, "spread_price": {}, "score": {}}
         if pd.notna(r.SPREAD_AWAY) and pd.notna(r.SPREAD_HOME):
             game["spread"] = {r.AWAY_KEY: float(r.SPREAD_AWAY),
                               r.HOME_KEY: float(r.SPREAD_HOME)}
+        if has_spread_price and pd.notna(r.SPREAD_PRICE_AWAY) \
+                and pd.notna(r.SPREAD_PRICE_HOME):
+            game["spread_price"] = {r.AWAY_KEY: int(r.SPREAD_PRICE_AWAY),
+                                    r.HOME_KEY: int(r.SPREAD_PRICE_HOME)}
         if pd.notna(r.AWAY_SCORE) and pd.notna(r.HOME_SCORE):
             game["score"] = {r.AWAY_KEY: int(r.AWAY_SCORE),
                              r.HOME_KEY: int(r.HOME_SCORE)}
@@ -83,22 +93,25 @@ def load_odds_lookup():
 
 
 def real_game(lookup, year, team_high, team_low, pick):
-    """Return (ml_pick, ml_opp, spread_pick, margin) for the real game, any of
-    which may be None. margin = pick_score - opponent_score. ml_opp lets callers
-    de-vig the market's implied probability."""
+    """Return (ml_pick, ml_opp, spread_pick, spread_price_pick, margin) for the
+    real game, any of which may be None. margin = pick_score - opponent_score.
+    ml_opp lets callers de-vig the market's implied probability; spread_price_pick
+    is the real American price on the pick's spread when odds.csv carries it (else
+    None, and the flip falls back to standard -110)."""
     kh, kl = fo.team_key(team_high), fo.team_key(team_low)
     game = lookup.get((year, frozenset((kh, kl))))
     if game is None:
-        return None, None, None, None
+        return None, None, None, None, None
     pk = fo.team_key(pick)
     opp = kl if pk == kh else kh
     ml = game["ml"].get(pk)
     ml_opp = game["ml"].get(opp)
     spread = game["spread"].get(pk)
+    spread_price = game["spread_price"].get(pk)
     margin = None
     if pk in game["score"] and opp in game["score"]:
         margin = game["score"][pk] - game["score"][opp]
-    return ml, ml_opp, spread, margin
+    return ml, ml_opp, spread, spread_price, margin
 
 
 def simulate_real_betting(actual_games, year, model, features, lookup,
@@ -116,7 +129,8 @@ def simulate_real_betting(actual_games, year, model, features, lookup,
             th, sh, tl, sl, model_df, model, features)
         p_win = p_high if pick == th else 1 - p_high
         implied = mm.prob_to_american_odds(p_win)
-        ml, ml_opp, spread, margin = real_game(lookup, year, th, tl, pick)
+        ml, ml_opp, spread, spread_price, margin = real_game(
+            lookup, year, th, tl, pick)
         covered = push = None
         if spread is not None and margin is not None:
             edge = margin + spread          # >0 pick covers, ==0 push
@@ -124,7 +138,8 @@ def simulate_real_betting(actual_games, year, model, features, lookup,
             covered = edge > 0
         graded.append({
             "implied": implied, "ml": ml, "correct": pick == g["WINNER"],
-            "spread": spread, "covered": covered, "push": push,
+            "spread": spread, "spread_price": spread_price,
+            "covered": covered, "push": push,
             # Fields for the per-game predictions table / strategy lab:
             "round": g["ROUND"], "pick": pick, "pick_seed": pick_seed,
             "opp_seed": sl if pick == th else sh,
@@ -139,7 +154,7 @@ def simulate_real_betting(actual_games, year, model, features, lookup,
         ml_sum = 0
         # ---- flip strategy ----
         f_won = f_lost = f_push = f_placed = f_no_odds = f_no_spread = 0
-        f_ml_bets = f_spread_bets = 0
+        f_ml_bets = f_spread_bets = f_real_spread_price = 0
         f_net = 0.0
         for gr in graded:
             if gr["implied"] > thresh:       # model not confident enough
@@ -163,10 +178,17 @@ def simulate_real_betting(actual_games, year, model, features, lookup,
                     f_no_spread += 1
                 else:
                     f_placed += 1; f_spread_bets += 1
+                    # Settle at the real spread price when odds.csv carries one,
+                    # otherwise fall back to standard -110.
+                    price = gr["spread_price"]
+                    if price is None:
+                        price = SPREAD_ODDS
+                    else:
+                        f_real_spread_price += 1
                     if gr["push"]:
                         f_push += 1
                     elif gr["covered"]:
-                        f_net += mm.american_odds_payout(SPREAD_ODDS, stake); f_won += 1
+                        f_net += mm.american_odds_payout(price, stake); f_won += 1
                     else:
                         f_net -= stake; f_lost += 1
             else:                            # softer line -> keep the moneyline
@@ -190,13 +212,15 @@ def simulate_real_betting(actual_games, year, model, features, lookup,
             "net_pnl": round(f_net, 2), "total_wagered": round(f_wagered, 2),
             "roi_pct": round(f_net / f_wagered * 100, 1) if f_wagered else 0.0,
             "spread_bets": f_spread_bets, "ml_bets": f_ml_bets,
+            "real_spread_price": f_real_spread_price,
             "no_odds": f_no_odds, "no_spread": f_no_spread,
         }
 
     # Per-game rows for the strategy lab — only games with a real moneyline are
     # bettable, so drop the rest here.
     games = [{k: gr[k] for k in ("round", "pick", "pick_seed", "opp_seed",
-                                 "model_p", "ml", "ml_opp", "spread", "margin",
+                                 "model_p", "ml", "ml_opp", "spread",
+                                 "spread_price", "margin",
                                  "correct", "covered", "push")}
              for gr in graded if gr["ml"] is not None]
     return {"ml": ml_res, "flip": flip_res, "games": games}
@@ -285,11 +309,19 @@ def main():
     # Report the years actually backtested (the first odds year can't be a test
     # year — it has no prior season to train on), not merely odds availability.
     bet_years = sorted(int(y) for y in out_ml["test_year"].unique())
+    # How many flip spread bets settled at a REAL price vs the -110 fallback
+    # (pooled over the -200 threshold, all_prior window — the app's headline cell).
+    fh = out_flip[(out_flip["window"] == "all_prior")
+                  & (out_flip["threshold"] == -200)]
+    real_sp = int(fh["real_spread_price"].sum()) if "real_spread_price" in fh else 0
+    total_sp = int(fh["spread_bets"].sum()) if "spread_bets" in fh else 0
     pd.DataFrame([{
         "odds_years": ",".join(str(y) for y in bet_years),
         "n_years": len(bet_years),
         "stake": STAKE,
         "spread_odds": SPREAD_ODDS,
+        "spread_bets_headline": total_sp,
+        "spread_bets_real_price": real_sp,
         "generated_utc": pd.Timestamp.utcnow().isoformat(),
     }]).to_csv(os.path.join(DATA_DIR, "betting_real_meta.csv"), index=False)
     print("\nDone.")

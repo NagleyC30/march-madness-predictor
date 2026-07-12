@@ -29,7 +29,7 @@ import pandas as pd
 
 DATA_DIR = "data"
 PICKS_FILE = os.path.join(DATA_DIR, "contest_picks.csv")
-STAKE = 10.0
+STAKE = 100.0
 
 COLUMNS = ["id", "created_utc", "season", "team_a", "team_b", "location",
            "user_pick", "user_conf", "model_pick", "model_prob_pick",

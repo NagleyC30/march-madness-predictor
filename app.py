@@ -205,10 +205,24 @@ brand.theme_selector()
 
 page = st.sidebar.radio(
     "Navigate",
-    ["Overview", "Bracket Predictions", "Head-to-Head", "Game Predictor",
-     "Me vs Machine", "Backtest & Calibration", "Model Accuracy", "Model Bake-off",
-     "How the Models Work", "Betting Simulation", "Custom Metric",
-     "Data Explorer"],
+    ["Overview",
+     # ── Betting (the flagship) ──
+     "Betting Lab", "Me vs Machine",
+     # ── Prediction tools ──
+     "Bracket Predictions", "Head-to-Head", "Game Predictor",
+     # ── How good is the model? ──
+     "Model Accuracy", "Backtest & Calibration", "Model Bake-off",
+     "How the Models Work",
+     # ── Data ──
+     "Custom Metric", "Data Explorer"],
+    captions=[
+        "Start here",
+        "Can it beat the market?", "You vs. the model",
+        "The predicted bracket", "Any two tourney teams", "Any game, any season",
+        "Walk-forward accuracy", "Game-model calibration", "Classifier shoot-out",
+        "Plain-English guide",
+        "Score your own stat", "Browse the ratings",
+    ],
 )
 
 if results["meta"] is not None:
@@ -235,51 +249,76 @@ if page == "Overview":
     st.markdown(
         "**B.O.B. — Betting on Basketball.** A machine-learning model that predicts "
         "NCAA basketball games from **KenPom** and **Barttorvik** team-efficiency "
-        "ratings, built to ask one question: **can it beat the market?** It's "
-        "validated **walk-forward** — to predict any year, it only ever trains on "
-        "games that happened *before* it, no peeking at the future."
+        "ratings, built to answer one question: **can it beat the market?** It's "
+        "validated **walk-forward** — to predict any season it only ever trains on "
+        "games that happened *before* it, so it never peeks at the future."
     )
 
-    if results["summary"] is not None:
-        s = results["summary"].copy()
-        best = s.loc[s["indep_acc"].idxmax()]
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Best window accuracy", f"{best['indep_acc']:.1%}",
-                  help="Independent per-game accuracy of the strongest training window.")
-        c2.metric("Games evaluated", f"{int(best['indep_total']):,}")
-        c3.metric("Seasons tested", f"{len([y for y in completed_years if y >= 2009])}")
-        c4.metric("Features per game", f"{len(FEATURES)}")
-    else:
-        st.info("Run `python precompute.py` to generate the results dashboards.")
+    # ── Headline: the betting question, front and centre ──────────────
+    s = results["summary"]
+    bmeta = results["bet_real_meta"]
+    best_acc = s.loc[s["indep_acc"].idxmax(), "indep_acc"] if s is not None else None
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Tournament pick accuracy",
+              f"{best_acc:.1%}" if best_acc is not None else "—",
+              help="Independent per-game accuracy of the strongest training window.")
+    c2.metric("Tournaments bet at real odds",
+              f"{int(bmeta.iloc[0]['n_years'])}" if bmeta is not None else "—",
+              help="Seasons with published closing lines, settled bet-by-bet.")
+    c3.metric("Flat bet size",
+              f"${bmeta.iloc[0]['stake']:,.0f}" if bmeta is not None else "$100",
+              help="Real-odds moneyline / spread bets in the Betting Lab.")
+    c4.metric("Beats the market?", "Not on chalk",
+              help="Flat-betting favorites loses at every threshold; only a fragile "
+                   "+EV edge on longer windows survives. See the Betting Lab.")
 
-    st.subheader("How it works")
+    st.info(
+        "👉 **Start in the Betting Lab** (left sidebar). It settles the model's "
+        "picks against real closing lines three ways — straight moneyline, "
+        "flip-the-chalk-to-a-spread, and a full +EV **strategy lab** — and is honest "
+        "about where the edge is real and where it isn't.",
+        icon="🎰",
+    )
+
+    st.subheader("How the model works")
     st.markdown(
-        """
-1. **Reconstruct history** — every tournament game from the dataset is rebuilt
-   into a matchup (higher seed vs. lower seed) with the actual winner.
+        f"""
+1. **Reconstruct history** — every tournament game in the dataset is rebuilt into
+   a matchup (higher seed vs. lower seed) with the actual winner.
 2. **Feature differences** — each game becomes the *difference* between the two
-   teams across ~95 efficiency metrics (adjusted offense/defense, tempo,
-   shooting, rebounding, experience, strength of schedule, …).
-3. **Train walk-forward** — a `GridSearchCV` over `RandomForest` and
-   `Bagging` classifiers picks the best model using only prior seasons.
-4. **Simulate the bracket** — the model advances winners round by round, and
-   reports each pick's confidence as an implied moneyline.
+   teams across **{len(FEATURES)}** efficiency metrics (adjusted offense/defense,
+   tempo, shooting, rebounding, experience, strength of schedule, …).
+3. **Train walk-forward** — a `GridSearchCV` over `RandomForest` and `Bagging`
+   classifiers picks the best model using only prior seasons.
+4. **Price every pick** — the model advances winners round by round and reports
+   each pick's confidence as an implied moneyline, which the Betting Lab tests
+   against the real closing line.
         """
     )
 
     st.subheader("The pages")
     st.markdown(
         """
-- **Bracket Predictions** — the model's full predicted bracket (2026) and champion.
-- **Head-to-Head** — pick any two *tournament* teams and get a live prediction.
-- **Game Predictor** — predict *any* game (regular season or tournament) for any
-  two D1 teams, with home-court advantage.
-- **Backtest & Calibration** — walk-forward accuracy and calibration of the
-  general game model across ~87k games.
+**🎰 Betting** — the flagship
+- **Betting Lab** — settle the model's picks at real closing lines (moneyline,
+  flip-to-spread, and a +EV strategy lab with staking schemes and drawdown).
+- **Me vs Machine** — an everlasting contest: your picks vs. the model's, blind-locked.
+
+**🔮 Prediction tools**
+- **Bracket Predictions** — the full predicted bracket and champion, by training window.
+- **Head-to-Head** — pick any two *tournament* teams for a live prediction.
+- **Game Predictor** — predict *any* game (regular season or tournament, including the
+  in-progress season) with home-court advantage.
+
+**📏 How good is the model?**
 - **Model Accuracy** — walk-forward accuracy by training window and tournament round.
-- **Betting Simulation** — hypothetical P&L at various confidence thresholds.
-- **Custom Metric** — upload your own metric and see how much it helps the model.
-- **Data Explorer** — browse the underlying team-season stats.
+- **Backtest & Calibration** — accuracy and calibration of the general game model.
+- **Model Bake-off** — six classifiers compared on probability quality and bracket points.
+- **How the Models Work** — a plain-English tour of every classifier.
+
+**🗂️ Data**
+- **Custom Metric** — upload your own stat and measure how much it helps.
+- **Data Explorer** — browse the underlying team-season ratings.
         """
     )
 
@@ -1224,7 +1263,7 @@ elif page == "How the Models Work":
     st.header("How the model sees a game")
     st.markdown(
         "Every game is reduced to one row of **differences**. For each of the "
-        "~90 KenPom/Barttorvik ratings we subtract the lower seed's value from the "
+        f"**{len(FEATURES)}** KenPom/Barttorvik ratings we subtract the lower seed's value from the "
         "higher seed's, and the model learns to predict **`HIGH_SEED_WINS`** (1 if "
         "the better seed wins). So a *positive* number always means \"the "
         "favorite has more of this stat.\" The model never sees team names — only "
@@ -1329,7 +1368,7 @@ elif page == "How the Models Work":
     )
     st.markdown(
         "- **The blocker is data size, not tooling.** The tournament model trains "
-        "on only ~1,000 games (with ~90 rating features). Deep nets are hungry; on "
+        f"on only ~1,000 games (with {len(FEATURES)} rating features). Deep nets are hungry; on "
         "small, tabular data they **overfit** — exactly what we saw (the MLP's "
         "log-loss blew up to 1.69). Gradient-boosted trees usually *beat* neural "
         "nets in this regime.\n"
@@ -1360,8 +1399,29 @@ elif page == "How the Models Work":
 # PAGE: BETTING SIMULATION
 # ──────────────────────────────────────────────────────────────
 
-elif page == "Betting Simulation":
-    st.title("Betting Simulation")
+elif page == "Betting Lab":
+    st.title("🎰 Betting Lab — can the model beat the market?")
+    st.markdown(
+        "This is the heart of the project. The model is a good *predictor* — but a "
+        "prediction only makes money if it beats the **price** the sportsbook sets. "
+        "Here we settle its tournament picks against **real closing lines** from the "
+        "sportsbook archive and ask, honestly, whether any strategy turns a profit."
+    )
+
+    _meta = results["bet_real_meta"]
+    if _meta is not None:
+        _m = _meta.iloc[0]
+        h1, h2, h3 = st.columns(3)
+        h1.metric("Real bets staked", f"${_m['stake']:,.0f} flat",
+                  help="Each moneyline / spread bet in the sweep below risks this "
+                       "much. ROI % is stake-independent; only the dollar P&L scales.")
+        h2.metric("Tournaments backtested", f"{int(_m['n_years'])}",
+                  help=f"Seasons with published closing odds: {_m['odds_years']}.")
+        h3.metric("Verdict", "No edge on chalk",
+                  help="Flat-betting the model's confident favorites loses at every "
+                       "threshold — on the moneyline and on the spread. The +EV "
+                       "strategy lab below is the one place a (fragile) edge appears.")
+    st.divider()
 
     def _render_bet_table(summ, window, extra_cols=()):
         """Threshold P&L table for one training window."""
@@ -1415,10 +1475,12 @@ elif page == "Betting Simulation":
                    "(and `python precompute.py`) first.")
     else:
         source = st.radio("Strategy", sources, horizontal=True)
+        _stake = results["bet_real_meta"].iloc[0]["stake"] \
+            if results["bet_real_meta"] is not None else 100
         st.markdown(
-            "At each **confidence threshold** the model bets $10 on its pick only "
-            "when it is at least that confident (e.g. `-300` = only very strong "
-            "favorites). Higher thresholds → fewer, chalkier bets."
+            f"At each **confidence threshold** the model bets **${_stake:,.0f}** on "
+            "its pick only when it is at least that confident (e.g. `-300` = only "
+            "very strong favorites). Higher thresholds → fewer, chalkier bets."
         )
         meta = results["bet_real_meta"]
         yrs = meta.iloc[0]["odds_years"] if meta is not None else "2009–2019, 2021"
@@ -1454,13 +1516,23 @@ elif page == "Betting Simulation":
                 "favorite there is almost nothing worth betting."
             )
         elif source == "Real odds — flip chalk to spread":
+            _spm = results["bet_real_meta"]
+            _real_sp = int(_spm.iloc[0]["spread_bets_real_price"]) \
+                if _spm is not None and "spread_bets_real_price" in _spm.columns else 0
+            _price_note = (
+                "settled at each spread's **real closing price**"
+                if _real_sp else
+                "settled at standard **−110** juice (the archive carries the spread "
+                "*number* but not its price; drop real spread prices into `odds.csv` "
+                "and they're used automatically)")
             st.info(
                 "Same picks and thresholds, but when the pick's **real moneyline is "
                 "shorter than the threshold** (heavy chalk that pays pennies), the "
-                "bet is placed on the **real point spread at −110** instead — the "
-                "'take the points on a huge favorite' idea. Softer lines still bet "
-                "the moneyline. **Spread bets** / **ML bets** show the split; "
-                "**Push** = the favorite landed exactly on the number."
+                f"bet is placed on the **real point spread**, {_price_note} — the "
+                "'take the points on a huge favorite' idea. The spread *line* is the "
+                "actual closing number the pick laid; softer lines still bet the "
+                "moneyline. **Spread bets** / **ML bets** show the split; **Push** = "
+                "the favorite landed exactly on the number."
             )
             summ = (bet_flip.groupby(["window", "threshold"]).agg(
                 placed=("placed", "sum"), won=("won", "sum"), lost=("lost", "sum"),
@@ -1662,7 +1734,7 @@ elif page == "Custom Metric":
         "Upload a metric of your own — coaching tenure, tournament history, "
         "travel distance, anything numeric — and see **how much it helps the "
         "model** predict real tournament games. The app trains the model twice "
-        "(with and without your metric) and ranks your metric against the ~95 "
+        f"(with and without your metric) and ranks your metric against the {len(FEATURES)} "
         "existing features by **permutation importance**."
     )
 

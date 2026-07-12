@@ -46,7 +46,9 @@ Run the experiment after having the model build and test on every year from 2008
 
 - Added real closing spreads + final scores to `data/odds.csv` (spread = smaller of the two SBR Close cells, favorite lays it; validated at a 48% home cover rate). `backtest_odds.py` now settles both strategies in one run → `data/betting_simulation_spreadflip.csv`.
 
-- Result: flipping to the spread **doesn't help — it's worse** at 19 of 20 window×threshold combos (~ -5% to -11% ROI vs -2% to -7% for moneyline). The closing spread is efficient: a near-certain moneyline win becomes a ~coin-flip cover (1165–1170 ATS at -200) and you eat the -110 vig every time. The naive "take the points on a huge favorite" intuition doesn't survive contact with real, efficient closing lines. Shown as a third strategy toggle on the **Betting Simulation** page.
+- Result: flipping to the spread **doesn't help — it's worse** at 19 of 20 window×threshold combos (~ -5% to -11% ROI vs -2% to -7% for moneyline). The closing spread is efficient: a near-certain moneyline win becomes a ~coin-flip cover (1165–1170 ATS at -200) and you eat the -110 vig every time. The naive "take the points on a huge favorite" intuition doesn't survive contact with real, efficient closing lines. Shown as a third strategy toggle on the **Betting Lab** page.
+
+- **Update (2026-07-12): stake raised $10 → $100** in `backtest_odds.py` (the real-odds moneyline + flip P&L tables and `betting_real_meta.csv`; contest flat-bet too). ROI% is stake-independent so the conclusions are unchanged — only the dollar figures scale 10×. The strategy-lab bankroll ($1000/$10 flat/¼-Kelly) was **left as-is** by user decision. **How the flip picks a spread:** it bets the model's *own pick* against that pick's **real closing spread** (`game["spread"][pick]`); the flip only fires on heavy chalk, so the pick is the favorite laying points, settled `margin + spread > 0` = cover. The spread *number* is always real (SBR close); the *price* was a fixed -110 assumption — now `backtest_odds.py` reads optional `SPREAD_PRICE_AWAY/HOME` columns from `odds.csv` and settles each spread bet at its real price when present, falling back to -110 (coverage reported in the meta + app copy). **TODO (user):** source real spread prices, add those two columns, re-run `backtest_odds.py`.
 
 4\. Apply each model to the 2027 tournament. -- **IN PROGRESS / blocked on data**
 
@@ -81,7 +83,16 @@ the data is published.
 6\. **Make betting the flagship of the app.** Elevate it in the information
 architecture — lead the navigation / Overview with the betting analysis, frame
 the whole project around "can the model beat the market," and consolidate the
-betting views into one strong dashboard instead of a single buried page.
+betting views into one strong dashboard instead of a single buried page. --
+**DONE (2026-07-12)**
+- Sidebar nav reordered into four groups with one-line captions, **Betting Lab +
+  Me vs Machine leading**. The old "Betting Simulation" page is renamed **"🎰
+  Betting Lab — can the model beat the market?"** with a headline metric row
+  (stake, tournaments backtested, verdict). Overview reframed to lead with the
+  betting question (KPI row + "start in the Betting Lab" call-out) and its stale
+  page list rebuilt (it had listed only 8 of 12 pages and cited a wrong "~87k
+  games"). The betting views were already one consolidated page (sweep + strategy
+  lab + slices + calibration), so "consolidate" = elevate + reframe, done here.
 
 7\. **Build a strategy lab — try many betting strategies, compared side by side.** -- **DONE (first pass)**
 On top of the three current settlements (moneyline, flip-to-spread,
@@ -206,7 +217,11 @@ Surface a model-comparison view in the app.
 9\. **Design pass on the app.** Custom Streamlit theme (colors, fonts via
 `.streamlit/config.toml`), cleaner navigation and a real landing/Overview page,
 consistent chart styling, readable copy, and mobile-friendly layout. Goal: it
-looks polished and is easy for a non-technical visitor to explore.
+looks polished and is easy for a non-technical visitor to explore. -- **DONE
+(2026-07-12, with item 6)** — grouped/captioned nav, reframed Overview, and a
+copy-accuracy sweep across all 12 pages (feature counts now render the real
+`96`; README updated). Verified live in the browser + `test_app.py` (all 12
+pages render). Theme/logo work shipped earlier (item 16).
 
 ---
 

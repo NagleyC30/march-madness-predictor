@@ -2,8 +2,10 @@
 # exception is raised. Not committed as a unit test suite — just a boot check.
 from streamlit.testing.v1 import AppTest
 
-PAGES = ["Overview", "Bracket Predictions", "Head-to-Head", "Model Accuracy",
-         "Betting Simulation", "Data Explorer"]
+PAGES = ["Overview", "Betting Lab", "Me vs Machine", "Bracket Predictions",
+         "Head-to-Head", "Game Predictor", "Model Accuracy",
+         "Backtest & Calibration", "Model Bake-off", "How the Models Work",
+         "Custom Metric", "Data Explorer"]
 
 for page in PAGES:
     at = AppTest.from_file("app.py", default_timeout=180)
