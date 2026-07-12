@@ -13,6 +13,10 @@ env/
 precompute_log.txt
 model_3_0_output.txt
 
+# Secrets — the CBBD API key (fetch_cbb_lines.py). NEVER commit it.
+.cbbd_key
+.env
+
 # Large, reproducible game log (regenerate with: python fetch_data.py 2008 2026)
 data/games.csv
 

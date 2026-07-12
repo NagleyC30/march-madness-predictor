@@ -526,3 +526,15 @@ own `data/*.csv` (order-independent among themselves): `precompute.py`,
 `model_bakeoff.py`, `bracket_pool.py`, `model_explain.py`, `predict_all_windows.py`.
 Smoke-test with `python test_app.py`.
 
+
+
+NEW STEPS (added 7/12)
+1. Determine how we can fetch real time sportsbook odds for this upcoming season so that way we have actual spread data to test instead of a pre-determined, arbitrary line.
+   - **Source decided: CollegeBasketballData.com (CBBD)** — free (Bearer-token API key), the basketball sibling of CollegeFootballData. Its `/lines` endpoint returns real spread, moneyline AND over/under per game, historical + current. Beats The Odds API (NCAAB is paid, $29/mo). One source fixes three things: real book spreads (kills the noisy 0.53-correlation SBR proxy), extends the backtest past 2021 → 2022-2026 (old item 12), and provides totals (unblocks the over/under model).
+   - **Fetcher BUILT (2026-07-12): `fetch_cbb_lines.py`.** Pulls `/lines` per season, normalizes team names via `fetch_odds.team_key`, writes `data/lines_cbbd.csv` — a SUPERSET of odds.csv's schema (adds SPREAD_PRICE_*, TOTAL, TOTAL_PRICE_*), so it can drop into `backtest_odds.py` and the spread plumbing already reads the price columns. Key stays out of the repo (CBBD_API_KEY env var or gitignored `.cbbd_key`); like the other fetchers it runs locally and commits the CSV, so Streamlit never needs the key. Has a `--probe SEASON` mode to confirm the exact JSON field names on the first authenticated run (schema coded to the CFBD family, accessed defensively).
+   - **BLOCKED ON USER:** get a free key at https://collegebasketballdata.com/key, then `echo <key> > .cbbd_key` (or set the env var) and run `python fetch_cbb_lines.py --probe 2024` (confirm fields) then `python fetch_cbb_lines.py 2022 2026`.
+   - **NEXT after data lands:** rewire `backtest_odds.py` + `margin_model.py` to consume `lines_cbbd.csv` (real spread prices; extended years; CLV once we have opening+closing); build the totals model on the new TOTAL column.
+2. How can we fix the model, aim for more accuracy? More testing?
+   - **Key finding (this session):** accuracy is **algorithm-capped** — the bake-off already showed 0.66–0.72 across every model, so swapping/tuning the classifier won't move it, and the RF we bet with is already well-calibrated (calibrating more didn't rescue the edge). The ceiling is **information, not the model**: the market prices games from the same public KenPom/Barttorvik ratings we use. Real levers, in order of upside: (a) **new signal the market underweights** (rest, travel, injuries, momentum, player-level) — test via the Custom Metric page; (b) **point-in-time tournament model** (honesty, not accuracy); (c) **margin→probability** (regressions calibrate better). Do these AFTER step 1, using real odds to measure closing-line value.
+3. Clean up the project notes.
+
