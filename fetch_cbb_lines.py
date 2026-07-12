@@ -45,6 +45,10 @@ OUT_PATH = os.path.join(DATA_DIR, "lines_cbbd.csv")
 API_URL = "https://api.collegebasketballdata.com/lines"
 CURRENT_SEASON = 2026                       # the in-progress 2025-26 season
 DEFAULT_START = 2022                         # first year past the SBR archive (2021)
+# CBBD sits behind Cloudflare, which 403s the default urllib User-Agent
+# (Error 1010). A normal browser UA passes the bot check, same as fetch_odds.py.
+USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
 # When a game has lines from several books, pick ONE representative line in this
 # order of preference; fall back to the first provider present.
@@ -84,7 +88,8 @@ def fetch_season(year, key):
     errors; surfaces a clear message on 401 (bad/missing key) or 429 (quota)."""
     url = f"{API_URL}?season={year}"
     req = Request(url, headers={"Authorization": f"Bearer {key}",
-                                "Accept": "application/json"})
+                                "Accept": "application/json",
+                                "User-Agent": USER_AGENT})
     last = None
     for attempt in range(3):
         try:
