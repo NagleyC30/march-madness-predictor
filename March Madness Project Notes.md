@@ -132,6 +132,40 @@ model-implied), add:
   overconfident on chalk. Deep-round slices (F4 +52% on 8 bets, Chip on 4) are
   noise. Reinforces the Phase-2 calibration motivation.
 
+7d\. **Betting-strategy expansion — Tier 1 + Tier 2 (added 2026-07-12).** The
+honest picture from items 3/3b/7: the tournament **closing line is efficient** —
+flat ML loses, the flip loses, ¼-Kelly craters — and the only live lead is a
+fragile +EV pocket in **first-round, double-digit-underdog** bets. So expand in
+two directions: *squeeze that pocket harder* (Tier 1, runs on the existing
+`bet_games.csv`, no retraining) and *bet a market the classifier isn't currently
+expressing* (Tier 2, needs a new model head).
+
+- **TIER 1 — new selection + staking rules over `bet_games.csv`. -- IN PROGRESS
+  (2026-07-12).** All computed live by the app (`load_strategy_lab` runs
+  `betting_strategies.run_all`), so they also appear in the raw-vs-calibrated
+  comparison for free.
+  1. **Promote the edge pockets to first-class strategies** (they exist only as
+     read-only *slices* today): **first-round-only +EV** and **underdog-seed +EV
+     (seed ≥ 9)**, so they get equity curves, drawdown, and Kelly sizing — the
+     real "is the pocket good enough to *compound*?" test.
+  2. **Fade the overconfident chalk.** The bake-off proved the model overrates
+     favorites in the ~80–98% band; so when the model's pick lands there, bet the
+     **opponent's moneyline** instead (contrarian — banks on the measured
+     miscalibration, not the model's inflated prob). Flat stake.
+  3. **Edge-threshold sweep + gentler Kelly.** Replace the single arbitrary
+     `edge ≥ 3%` with a **1/2/3/5/7% sweep** (map the signal-vs-noise frontier),
+     and add **⅛- and 1⁄10-Kelly** (calibration already showed smaller fractions
+     are far less destructive; these run on the calibrated twin too).
+- **TIER 2 — new model heads for new markets. -- PLANNED (next).**
+  4. **Margin model → bet spreads on *every* game.** Train a regression predicting
+     point differential, bet ATS vs the real closing spread across all games (the
+     honest, full version of the chalk-only flip; uses the spread numbers already
+     in `odds.csv`).
+  5. **Totals model → over/under.** The model's tempo/efficiency features are
+     well-suited to predicting total points, and totals markets are often softer
+     than sides. Needs a totals column added to `odds.csv` (a small
+     `fetch_odds.py` extension) before it can be backtested.
+
 ---
 
 **PHASE 2 — Model bake-off (expand beyond RandomForest / Bagging).**

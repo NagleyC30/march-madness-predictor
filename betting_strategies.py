@@ -38,8 +38,12 @@ GAMES_FILE = os.path.join(DATA_DIR, "bet_games.csv")
 
 START_BANKROLL = 1000.0     # common starting bankroll for every strategy
 FLAT_UNIT = 10.0            # flat stake ($) — 1% of the starting bankroll
-KELLY_FRACTION = 0.25       # quarter-Kelly (conservative)
+KELLY_FRACTION = 0.25       # default Kelly fraction (quarter-Kelly, conservative)
 EDGE_MARGIN = 0.03         # "edge >= 3%" strategy threshold
+# Tier-1 expansion (2026-07-12):
+FADE_LOW, FADE_HIGH = 0.80, 0.98  # overconfident-favorite band to fade (bet the dog)
+DOG_SEED_MIN = 9                  # "underdog by seed": back a team seeded >= this
+EDGE_SWEEP = (0.01, 0.02, 0.03, 0.05, 0.07)  # +EV edge-threshold frontier
 
 ROUND_ORDER = {r: i for i, r in enumerate(
     ["R64", "R32", "S16", "E8", "F4", "Championship"])}
@@ -128,12 +132,52 @@ def sel_value_edge(row):
     return None
 
 
+# ── Tier-1 (2026-07-12): promote the edge pockets + a contrarian fade ──────────
+
+def sel_value_r64(row):
+    """+EV bets restricted to the FIRST ROUND — the slice where the edge lives.
+    Promoted from a read-only slice to a stakeable strategy so it gets an equity
+    curve, drawdown and Kelly sizing (does the pocket actually compound?)."""
+    return best_value_side(row) if row.get("round") == "R64" else None
+
+
+def sel_value_bigdog(row):
+    """+EV bets restricted to underdogs *by seed* (the backed team seeded >= 9) —
+    the other pocket the slices flagged. Distinct from ``sel_value_dog``, which
+    defines 'underdog' by a positive moneyline rather than by tournament seed."""
+    s = best_value_side(row)
+    if s and pd.notna(s.get("seed")) and int(s["seed"]) >= DOG_SEED_MIN:
+        return s
+    return None
+
+
+def sel_fade_chalk(row):
+    """Contrarian: when the model rates its own pick (a favorite) inside the
+    overconfident band the bake-off measured (~80–98%), bet the OPPONENT's
+    moneyline instead. This banks on the *miscalibration* — the dog wins more
+    often than the model's inflated probability says — rather than on the model's
+    own number, so it is deliberately not sized by (fake) +EV. Flat stake."""
+    if FADE_LOW <= row["model_p"] <= FADE_HIGH and pd.notna(row["ml_opp"]):
+        return {"p": 1.0 - row["model_p"], "ml": row["ml_opp"],
+                "won": not bool(row["correct"]), "ml_opp": row["ml"],
+                "seed": row.get("opp_seed")}
+    return None
+
+
 STRATEGIES = [
     {"name": "Model chalk (ML ≥ -200)", "select": sel_chalk, "staking": "flat"},
     {"name": "Value (+EV, flat)", "select": sel_value, "staking": "flat"},
     {"name": "Value (+EV, ¼-Kelly)", "select": sel_value, "staking": "kelly"},
+    {"name": "Value (+EV, ⅛-Kelly)", "select": sel_value, "staking": "kelly",
+     "kelly_fraction": 0.125},
+    {"name": "Value (+EV, 1⁄10-Kelly)", "select": sel_value, "staking": "kelly",
+     "kelly_fraction": 0.10},
     {"name": "Value — underdogs only", "select": sel_value_dog, "staking": "flat"},
+    {"name": "Value — first round", "select": sel_value_r64, "staking": "flat"},
+    {"name": "Value — dog seeds ≥9", "select": sel_value_bigdog, "staking": "flat"},
     {"name": "Value — edge ≥ 3%", "select": sel_value_edge, "staking": "flat"},
+    {"name": "Fade chalk (dog ML, 80–98%)", "select": sel_fade_chalk,
+     "staking": "flat"},
 ]
 
 
@@ -162,8 +206,9 @@ def simulate(games, strategy):
             continue
         b = net_odds(side["ml"])
         if strategy["staking"] == "kelly":
+            frac = strategy.get("kelly_fraction", KELLY_FRACTION)
             f_star = max(0.0, (side["p"] * b - (1.0 - side["p"])) / b)
-            stake = min(KELLY_FRACTION * f_star * bank, bank)
+            stake = min(frac * f_star * bank, bank)
         else:
             stake = FLAT_UNIT
         if stake <= 0:
@@ -303,6 +348,33 @@ def run_slices(games, by, strategy=None, window=None):
     return out
 
 
+# ──────────────────────────────────────────────────────────────
+# EDGE-THRESHOLD SWEEP — map the signal-vs-noise frontier
+# ──────────────────────────────────────────────────────────────
+#
+# The "edge >= 3%" strategy picks one arbitrary cutoff. This sweeps a range so
+# you can see where tightening the required +EV edge stops adding signal and
+# starts just shrinking the sample (flat-staked Value bets, per window).
+
+def run_edge_sweep(games, thresholds=EDGE_SWEEP, window=None):
+    """ROI of Value (+EV, flat) as the minimum de-vigged edge is tightened.
+    Returns one summary row per (window, edge threshold)."""
+    windows = [window] if window else sorted(games["window"].unique())
+    rows = []
+    for w in windows:
+        gw = games[games["window"] == w]
+        for thr in thresholds:
+            def _sel(row, _thr=thr):
+                s = best_value_side(row)
+                if s and pd.notna(s.get("ml_opp")) and \
+                        s["p"] - devig_prob(s["ml"], s["ml_opp"]) >= _thr:
+                    return s
+                return None
+            summ, _ = simulate(gw, {"select": _sel, "staking": "flat"})
+            rows.append({"window": w, "edge_min_pct": round(thr * 100, 1), **summ})
+    return pd.DataFrame(rows)
+
+
 def load_games(path=GAMES_FILE):
     df = pd.read_csv(path)
     df["correct"] = df["correct"].astype(bool)
@@ -324,6 +396,10 @@ def main():
                        ignore_index=True)
     slices.to_csv(os.path.join(DATA_DIR, "betting_strategies_slices.csv"),
                   index=False)
+
+    sweep = run_edge_sweep(games)
+    sweep.to_csv(os.path.join(DATA_DIR, "betting_strategies_edgesweep.csv"),
+                 index=False)
 
     # Headline: the most-data window.
     w = "all_prior"
@@ -347,8 +423,9 @@ def main():
                   f"{r.roi_pct:>+7.1f} {r.avg_edge_pct:>+6.1f}")
 
     print(f"\nWrote betting_strategies_summary.csv ({len(summary)} rows), "
-          f"betting_strategies_equity.csv ({len(equity)} rows), and "
-          f"betting_strategies_slices.csv ({len(slices)} rows).")
+          f"betting_strategies_equity.csv ({len(equity)} rows), "
+          f"betting_strategies_slices.csv ({len(slices)} rows), and "
+          f"betting_strategies_edgesweep.csv ({len(sweep)} rows).")
 
 
 if __name__ == "__main__":
