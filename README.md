@@ -22,12 +22,14 @@ reaches roughly **71% per-game accuracy**. The dashboard has a swappable colour
   **and the in-progress 2026–27 season** using Barttorvik's live/preseason
   ratings (refreshed with `python update_current_season.py`).
 - **Model Accuracy** — walk-forward accuracy by training window, year, and round.
-- **Betting Simulation** — hypothetical P&L against **real historical closing
-  lines** (2008–2019, 2021): a confidence-threshold sweep (moneyline vs
-  flip-to-spread vs model-implied), plus a **strategy lab** that bets **value /
-  +EV** spots (where the model's probability beats the price, on either side)
-  with flat vs **fractional-Kelly** staking and compares ROI, drawdown and
-  bankroll curves. Educational, not betting advice.
+- **Betting Lab** (the flagship) — hypothetical P&L against **real historical
+  closing lines** (2009–2019, 2021): a confidence-threshold sweep (moneyline vs
+  flip-to-spread vs model-implied) staking **$100** a bet, plus a **strategy lab**
+  that bets **value / +EV** spots (where the model's probability beats the price,
+  on either side) with flat vs **fractional-Kelly** staking and compares ROI,
+  drawdown and bankroll curves. Educational, not betting advice.
+- **Me vs Machine** — an everlasting, blind-locked contest of your picks vs. the
+  model's, with a symmetric flat-bet P&L.
 - **Custom Metric** — upload your own metric (`YEAR, TEAM, <numeric columns>`) and
   the app retrains with and without it, reporting the accuracy change and the
   metric's **permutation importance** ranked against the built-in features.
@@ -82,7 +84,7 @@ re-running the heavy training in the cloud.
 1. **Reconstruct history** — every tournament game in the dataset is rebuilt into
    a matchup (higher seed vs. lower seed) with the actual winner.
 2. **Feature differences** — each game becomes the *difference* between the two
-   teams across ~95 metrics (adjusted offense/defense, tempo, shooting,
+   teams across 96 metrics (adjusted offense/defense, tempo, shooting,
    rebounding, experience, strength of schedule, …).
 3. **Walk-forward training** — a `GridSearchCV` over `RandomForestClassifier` and
    `BaggingClassifier` selects the best model using only prior seasons.
@@ -106,7 +108,7 @@ python backtest_odds.py     # data/betting_simulation_real.csv — P&L
   with a normalizer + verified alias map (**100%** of tournament teams matched).
 - **Method** — walk-forward with no leakage (same training as `precompute.py`):
   for every game a tournament actually played, the model picks a winner and a
-  confidence; at each threshold (−200/−250/−300/−350) it stakes $10 on picks it
+  confidence; at each threshold (−200/−250/−300/−350) it stakes $100 on picks it
   is at least that confident about, **settled at the real closing line and the
   real result**. Games with no matchable line are excluded and reported.
 - **Result** — every training-window × threshold combination loses money
@@ -117,8 +119,9 @@ python backtest_odds.py     # data/betting_simulation_real.csv — P&L
   there is essentially nothing worth betting.
 - **Flip to spreads?** (`betting_simulation_spreadflip.csv`) — the natural next
   idea is to *take the points* on those heavy favorites: when a pick's real
-  moneyline is shorter than the threshold, bet the real closing spread at −110
-  instead. It doesn't help — it's **worse** at 19 of 20 window × threshold
+  moneyline is shorter than the threshold, bet the real closing spread instead
+  (at its real price when `odds.csv` carries one, otherwise standard −110). It
+  doesn't help — it's **worse** at 19 of 20 window × threshold
   combinations (−5% to −11% ROI). The closing spread is efficient, so a
   near-certain moneyline win becomes a ~coin-flip cover (1165–1170 against the
   spread at −200) and you pay the −110 vig on every one. The market has already
