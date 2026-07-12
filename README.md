@@ -45,8 +45,10 @@ reaches roughly **71% per-game accuracy**. The dashboard has a swappable colour
 | `predict_all_windows.py` | Forecasts the upcoming bracket with every training window → `data/bracket_all_windows.csv`. |
 | `update_current_season.py` | Pulls the in-progress season's Barttorvik ratings into `data/ratings.csv` for the Game Predictor. |
 | `fetch_odds.py` | Downloads & parses real historical sportsbook moneylines → `data/odds.csv`. |
+| `fetch_cbb_lines.py` | Fetches real spreads/moneylines/totals from CollegeBasketballData.com (free API key) → `data/lines_cbbd.csv`. Real book lines, 2022–present. |
 | `backtest_odds.py` | Settles the model's picks at those real odds (moneyline + flip-to-spread); also emits the per-game table `data/bet_games.csv`. |
 | `betting_strategies.py` | Strategy lab — value/+EV & Kelly strategies over `bet_games.csv` (imported live by the app). |
+| `margin_model.py` | Regression on point margin; bets the spread (ATS) vs real closing lines, point-in-time vs season-aggregate. |
 | `data/` | Precomputed results the app loads instantly. |
 | `KenPom Barttorvik.csv` | Source team-season efficiency ratings (2008–2026). |
 | `requirements.txt` | Python dependencies for Streamlit Community Cloud. |
