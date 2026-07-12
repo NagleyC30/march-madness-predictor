@@ -156,14 +156,34 @@ expressing* (Tier 2, needs a new model head).
      `edge ≥ 3%` with a **1/2/3/5/7% sweep** (map the signal-vs-noise frontier),
      and add **⅛- and 1⁄10-Kelly** (calibration already showed smaller fractions
      are far less destructive; these run on the calibrated twin too).
-- **TIER 2 — new model heads for new markets. -- PLANNED (next).**
-  4. **Margin model → bet spreads on *every* game.** Train a regression predicting
-     point differential, bet ATS vs the real closing spread across all games (the
-     honest, full version of the chalk-only flip; uses the spread numbers already
-     in `odds.csv`).
-  5. **Totals model → over/under.** The model's tempo/efficiency features are
-     well-suited to predicting total points, and totals markets are often softer
-     than sides. Needs a totals column added to `odds.csv` (a small
+- **TIER 2 — new model heads for new markets.**
+  4. **Margin model → bet spreads on *every* game. -- DONE (2026-07-12).**
+     `margin_model.py`: a HistGradientBoosting **regression** on point margin
+     (game_model's ratings-diff + HOME_COURT features), trained walk-forward on
+     games.csv, betting each real NCAA-tournament game ATS vs the real closing
+     spread (odds.csv), $100 flat, with a **points-edge sweep** (only bet when the
+     model disagrees with the number by ≥ K points). Runs **two ratings regimes**
+     like the Backtest page's reality check: **point-in-time** (honest, from
+     games_pit.csv, as-of game morning) and **season-aggregate** (leakage foil).
+     New "🎯 Spread model" section on the Betting Lab.
+     - **Result — the ONLY model that profits vs real lines, but distrust it.**
+       Point-in-time: **61.4% ATS / +17.1% ROI** over 477 games (2013–2021),
+       rising to +36% at a ≥5-pt edge; season-aggregate is even higher (65.6%,
+       leakage). **The catch, and why it's not a real edge:** the model's margin
+       MAE (8.5) actually *beats the spread's own* (9.0), and the archived spreads
+       correlate with actual margins at only **0.53** (model 0.59) — a sharp close
+       should be ~0.65. So the SBR-parsed historical spreads are a **soft, noisy
+       proxy**, not a modern book's close; the "edge" is against *that*. Baselines
+       confirm the settlement is unbiased (always-favorite covers 49.2%,
+       always-high-seed 50.3%). **Framed on the page as a promising lead to
+       validate against clean lines, not proof.** Committed CSVs (retrains 20
+       models, too slow for live): `margin_model_{ats,meta}.csv`, `margin_bets.csv`.
+     - **Follow-ups:** validate against cleaner/recent closing lines (ties to item
+       12); check residual same-day leakage in the point-in-time snapshots; try a
+       tournament-only or domain-weighted training mix.
+  5. **Totals model → over/under. -- PLANNED (next).** The model's tempo/efficiency
+     features are well-suited to predicting total points, and totals markets are
+     often softer than sides. Needs a totals column added to `odds.csv` (a small
      `fetch_odds.py` extension) before it can be backtested.
 
 ---

@@ -84,6 +84,18 @@ def load_strategy_lab():
 
 
 @st.cache_data
+def load_margin_model():
+    """Load the Tier-2 margin/ATS backtest (margin_model.py). It retrains 20
+    regressors, so unlike the strategy lab it's precomputed to disk, not live.
+    Returns None until it's been generated."""
+    ats = os.path.join(DATA_DIR, "margin_model_ats.csv")
+    meta = os.path.join(DATA_DIR, "margin_model_meta.csv")
+    if not (os.path.exists(ats) and os.path.exists(meta)):
+        return None
+    return {"ats": pd.read_csv(ats), "meta": pd.read_csv(meta)}
+
+
+@st.cache_data
 def load_explainers():
     """Teaching artifacts for the 'How the Models Work' page — precomputed to disk
     by `python model_explain.py` (instant), or computed live as a fallback."""
@@ -1785,6 +1797,104 @@ elif page == "Betting Lab":
                 "edge toward what's real. Watch whether the +EV strategies' ROI "
                 "collapses once that happens."
             )
+
+    # ── Spread model — predict the margin, bet the number (Tier 2) ──────
+    mm_ats = load_margin_model()
+    if mm_ats is not None:
+        st.divider()
+        st.header("🎯 Spread model — predict the margin, bet the number")
+        meta = mm_ats["meta"].set_index("method")
+
+        def _roi0(method):
+            """ROI at the 0-point edge threshold (bet every game) for a method."""
+            r = mm_ats["ats"]
+            row = r[(r["method"] == method) & (r["edge_pts"] == 0.0)]
+            return float(row["roi_pct"].iloc[0]) if not row.empty else 0.0
+
+        st.markdown(
+            "Everything above bets **who wins** (the moneyline) or flips heavy "
+            "chalk to the spread. This is a different animal: a **regression** "
+            "that predicts the **point margin** and bets it **against the real "
+            "closing spread on every tournament game**. It's the honest, full "
+            "version of \"beat the spread\" — and the only model here that turns a "
+            "profit against real lines. Read on for *why that's not the victory it "
+            "looks like.*"
+        )
+        pit = meta.loc["pit"] if "pit" in meta.index else None
+        agg = meta.loc["agg"] if "agg" in meta.index else None
+        if pit is not None:
+            c1, c2, c3 = st.columns(3)
+            c1.metric("ATS cover (point-in-time)", f"{pit['ats_cover_pct_all']:.1f}%",
+                      f"{pit['ats_cover_pct_all'] - pit['breakeven_pct']:+.1f} pts vs break-even",
+                      help=f"{int(pit['n_bettable'])} tournament games, "
+                           f"{pit['odds_years']}. Break-even at −110 is ~52.4%.")
+            c2.metric("ROI at $100 flat", f"{_roi0('pit'):+.1f}%",
+                      help="Point-in-time ratings (as-of game morning), no "
+                           "season-aggregate leakage — the honest number.")
+            c3.metric("Model vs. line (margin error)",
+                      f"{pit['margin_mae']:.1f} vs {pit['spread_mae']:.1f} MAE",
+                      help="Mean absolute error of the model's margin vs the "
+                           "spread's own implied margin. Lower = closer to reality.")
+
+        st.warning(
+            "**Why to distrust this.** The model beats the spread — but look at the "
+            f"line it's beating: the archived closing spreads correlate with actual "
+            f"margins at only **{pit['spread_corr']:.2f}** (the model manages "
+            f"{pit['model_corr']:.2f}). A sharp book's closing line should sit near "
+            "~0.65. So these SBR-parsed historical spreads behave like a **soft, "
+            "noisy proxy**, not a modern market close — the edge is against *that*, "
+            "and wouldn't likely survive a real book. Add the modest sample "
+            f"({int(pit['n_bettable'])} games, {int(pit['n_years'])} tournaments) and "
+            "possible residual same-day leakage in the point-in-time snapshots, and "
+            "this is a **promising lead to validate against clean lines** — not a "
+            "proven way to beat the spread."
+        )
+
+        # Points-edge sweep — pit (honest) vs agg (leakage foil)
+        ats = mm_ats["ats"]
+        show = ats[ats["method"].isin(["pit", "agg"])].copy()
+        show["Ratings"] = show["method"].map(
+            {"pit": "Point-in-time (honest)", "agg": "Season-aggregate (leakage foil)"})
+        st.subheader("Points-edge sweep")
+        st.markdown(
+            "Only bet when the model disagrees with the number by at least *K* "
+            "points — the spread analogue of the moneyline lab's +EV threshold. "
+            "The **season-aggregate** line sits above the honest one purely because "
+            "end-of-season ratings already know the result (the same leakage the "
+            "Backtest & Calibration page measures)."
+        )
+        line = alt.Chart(show).mark_line(point=True).encode(
+            x=alt.X("edge_pts:Q", title="Minimum edge vs the number (points)"),
+            y=alt.Y("roi_pct:Q", title="ROI %"),
+            color=alt.Color("Ratings:N", title=None,
+                            scale=alt.Scale(
+                                domain=["Point-in-time (honest)",
+                                        "Season-aggregate (leakage foil)"],
+                                range=["#1C6DD0", "#E8590C"])),
+            tooltip=["Ratings", alt.Tooltip("edge_pts:Q", title="Edge ≥"),
+                     "placed", alt.Tooltip("cover_pct:Q", format=".1f"),
+                     alt.Tooltip("roi_pct:Q", format="+.1f")],
+        )
+        zero = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(
+            strokeDash=[4, 4], color="gray").encode(y="y:Q")
+        st.altair_chart((line + zero).properties(height=320), width="stretch")
+        disp = show[["Ratings", "edge_pts", "placed", "push", "cover_pct", "roi_pct"]].rename(
+            columns={"edge_pts": "Edge ≥ (pts)", "placed": "Bets", "push": "Push",
+                     "cover_pct": "Cover %", "roi_pct": "ROI %"})
+        st.dataframe(
+            disp.style.format({"Edge ≥ (pts)": "{:.0f}", "Cover %": "{:.1f}",
+                               "ROI %": "{:+.1f}"})
+            .map(lambda v: "color: #2F9E44" if isinstance(v, (int, float)) and v > 0
+                 else ("color: #D6336C" if isinstance(v, (int, float)) and v < 0 else ""),
+                 subset=["ROI %"]),
+            hide_index=True, width="stretch",
+        )
+        st.caption(
+            "Generated by `python margin_model.py`. The point-in-time model trains "
+            "only on games from earlier seasons and predicts each tournament game "
+            "from ratings as they stood that morning; the season-aggregate twin is "
+            "shown only to expose how much leakage flatters the numbers."
+        )
 
 
 # ──────────────────────────────────────────────────────────────
