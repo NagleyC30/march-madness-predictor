@@ -20,6 +20,7 @@
 
 import os
 import sys
+from datetime import date
 
 import pandas as pd
 
@@ -56,12 +57,19 @@ def schedule_available(year):
         return False
 
 
+def current_season(today=None):
+    """The in-progress season's year (the year it ends in). A season is named for
+    its spring (2026-27 = 2027); the next one's preseason ratings appear from
+    ~June, so from June on we target next spring, before June this spring."""
+    today = today or date.today()
+    return today.year + 1 if today.month >= 6 else today.year
+
+
 def update(year=None):
     ratings = pd.read_csv(RATINGS_FILE)
     base = _base_features(ratings)
-    completed_max = int(ratings["YEAR"].max())
     if year is None:
-        year = completed_max + 1
+        year = current_season()
 
     print(f"Fetching Barttorvik ratings for {year} "
           f"(season {year - 1}-{str(year)[-2:]})…", flush=True)
