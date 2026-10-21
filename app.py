@@ -15,6 +15,7 @@ import game_model as gm
 import betting_strategies as bs
 import model_explain as me
 import contest as ct
+import slate as sl
 import branding as brand
 
 st.set_page_config(
@@ -698,6 +699,44 @@ elif page == "Me vs Machine":
             format_func=lambda y: f"{y} (in progress)" if y == in_progress_year else str(y))
         ryear = ratings[ratings["YEAR"] == season]
         teams = sorted(ryear["TEAM"].unique())
+
+        # ── Suggest good matchups (slate criteria) ──────────────────
+        with st.expander("💡 Suggest good matchups (slate criteria)"):
+            st.markdown(
+                "Paste the games you're considering, one per line "
+                "(`Duke vs Kansas` = neutral court, `Duke at Kansas` = Kansas "
+                "home). Each is gated and scored for how good a *contest* game "
+                "it is — **competitiveness 40% · quality 35% · salience 25%** — "
+                "and the best are chosen subject to: no team twice, a per-day "
+                "cap, a quality floor, and a mix of toss-ups and lean games. "
+                "To keep entry blind, the model's pick, favorite and win "
+                "probability are **not** shown here."
+            )
+            pasted = st.text_area("Candidate games", key="mvm_candidates",
+                                  placeholder="Duke vs Kansas\nHouston at Baylor")
+            if st.button("Score these games", key="mvm_suggest"):
+                cand, bad = sl.parse_games(pasted, teams)
+                if bad:
+                    st.warning("Couldn't read: " + "; ".join(bad))
+                if cand.empty:
+                    st.info("No valid games to score.")
+                else:
+                    scored = sl.score_games(cand, ryear, model, features)
+                    picked = sl.build_slate(scored)
+                    if picked.empty:
+                        st.info(
+                            "None of these clear the gate (both teams rated, at "
+                            f"least one top-{sl.TOP_N_GATE}) and the quality "
+                            "floor — better to skip them than test on blowouts.")
+                    else:
+                        pv = sl.public_view(picked).rename(columns={
+                            "team_a": "Team A", "team_b": "Team B",
+                            "location": "Venue", "score": "Score", "why": "Why"})
+                        pv["Venue"] = pv["Venue"].map(
+                            {"A": "A home", "B": "B home", "N": "Neutral"})
+                        st.dataframe(pv, hide_index=True, width="stretch",
+                                     column_config={"Score": st.column_config.NumberColumn(format="%.2f")})
+                        st.caption(f"{len(picked)} of {len(cand)} games selected.")
 
         c1, c2 = st.columns(2)
         team_a = c1.selectbox("Team A", teams, index=0, key="mvm_a")
