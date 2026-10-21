@@ -38,6 +38,7 @@ data/betting_strategies_edgesweep.csv
 # Me-vs-Machine contest store — user-generated at runtime, mutates on every
 # pick/settle. Not committed (the app creates it on first use).
 data/contest_picks.csv
+.streamlit/secrets.toml
 
 # OS / editor
 .DS_Store

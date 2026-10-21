@@ -81,6 +81,33 @@ Streamlit installs `requirements.txt` and serves `app.py` automatically. Commit
 the `data/` CSVs (produced by `precompute.py`) so the dashboards work without
 re-running the heavy training in the cloud.
 
+## 🗄️ Durable pick storage (Supabase)
+
+The **Me vs Machine** contest writes to a local CSV by default, which a cloud host
+wipes on restart. To make picks permanent, point the app at a free Supabase
+Postgres database:
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. **Project Settings → Database → Connection string → "Session pooler"** — copy
+   the URI (Streamlit Cloud can't reach the direct connection, which is IPv6-only)
+   and fill in your database password.
+3. Give the app the URL:
+   - **Streamlit Cloud:** app **Settings → Secrets**, add
+     ```toml
+     [supabase]
+     db_url = "postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres"
+     ```
+   - **Locally:** put the same block in `.streamlit/secrets.toml` (git-ignored), or
+     `export SUPABASE_DB_URL=...`.
+4. Reload the app. The first run creates the `contest_picks` table and its guard
+   trigger automatically; the Me vs Machine page footer says where picks live.
+
+The database enforces the contest's integrity: lock timestamps are set by Postgres,
+locked fields (teams, both picks, lines) can't be edited, a pending game can be
+settled exactly once, and settled games are read-only. Run `python
+test_contest_store.py` for the CSV path; set `TEST_DB` to a scratch Postgres URL to
+test the database path too (it drops the `contest_picks` table).
+
 ## 🔬 How the model works
 
 1. **Reconstruct history** — every tournament game in the dataset is rebuilt into
