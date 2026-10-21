@@ -667,8 +667,8 @@ elif page == "Me vs Machine":
             "- **Blind entry.** You lock your pick *before* the model's pick is "
             "shown — the machine's choice is revealed only after you commit.\n"
             "- **Locked together, timestamped.** Both picks are written to "
-            "`data/contest_picks.csv` the instant you lock in, so neither can be "
-            "edited after the fact.\n"
+            "the pick store (Supabase when configured, else a local CSV) the instant "
+            "you lock in, so neither can be edited after the fact.\n"
             "- **Settle only after the game.** You enter the real winner later; "
             "scores never touch a pick before it's locked.\n"
             "- **Betting is a fair, symmetric flat bet.** If you enter the market "
@@ -852,9 +852,13 @@ elif page == "Me vs Machine":
                     "actual_winner": "Winner"})
                 st.dataframe(hist[::-1], hide_index=True, width="stretch")
 
-        st.caption("Picks are stored in `data/contest_picks.csv`. On an ephemeral "
-                   "cloud host this resets on restart — durable storage is a later "
-                   "upgrade.")
+        if ct.storage_backend() == "supabase":
+            st.caption("🗄️ Picks are stored in Supabase — durable, with "
+                       "database-set timestamps.")
+        else:
+            st.caption("⚠️ Picks are stored in `data/contest_picks.csv`, which "
+                       "resets on an ephemeral cloud host. Set a Supabase "
+                       "connection (see README) for durable storage.")
 
 
 # ──────────────────────────────────────────────────────────────
