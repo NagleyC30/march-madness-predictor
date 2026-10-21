@@ -323,6 +323,15 @@ when I make mine. -- **IN PROGRESS — manual-entry mode DONE (2026-07-10); auto
   Verified end-to-end live (lock → pending → settle → scoreboard). `contest_picks.csv`
   is gitignored (user runtime data); dtype gotcha fixed (empty text cols read as
   float64 rejected timestamp writes).
+- **Slate criteria implemented (2026-10-21).** New `slate.py` codes the gate →
+  score → constrain spec above (40/35/25 weights, top-60 gate, quality floor,
+  per-day cap, no team twice, min non-toss-up mix; all knobs are module
+  constants). Wired into the page as a **"Suggest good matchups"** expander:
+  paste `A vs B` / `A at B` lines, get the selected slate. Blind-entry safe — the
+  UI uses `public_view()`, which hides the model's pick/prob/competitiveness.
+  `test_slate.py` covers gate, constraints, blind safety, parsing and the button.
+  Cross-window-split and market-gap salience inputs are supported but unfed until
+  the auto phase.
 - **Still deferred (auto phase):** the automated weekly slate (needs the 2027
   schedule / `2027_super_sked.csv`, ~Nov 2026 — same blocker as items 5/11), the
   recurring "make your picks" prompt (scheduled-tasks/cron), and richer betting
