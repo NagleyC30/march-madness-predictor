@@ -49,12 +49,18 @@ def remove_season(year):
 
 
 def schedule_available(year):
-    """Whether Barttorvik has published this season's schedule yet."""
+    """Whether Barttorvik has published this season's super_sked.csv yet.
+
+    Before it's published the URL still answers 200, but with a tiny HTML page
+    that redirects to the preseason ratings (seen 2026-11-01 for 2027), so the
+    download "succeeds" and parses to zero games. Treat that as not published.
+    (The weekly slate doesn't need this file: weekly_slate.py reads the daily
+    schedule pages, which list games as soon as they're scheduled.)"""
     try:
-        fd.parse_super_sked(year)
-        return True
+        text = fd._download(year, "super_sked")
     except Exception:
         return False
+    return not text.lstrip().startswith("<") and len(text) > 1000
 
 
 def current_season(today=None):
@@ -100,7 +106,7 @@ def update(year=None):
     print(f"\nMerged {len(new)} teams for {year}. "
           f"ratings.csv now covers {sorted(ratings['YEAR'].unique())}.")
     print(f"Schedule (super_sked) published for {year}? "
-          f"{'yes — scheduled-game prediction is possible' if has_sked else 'not yet'}.")
+          f"{'yes' if has_sked else 'not yet (fine — weekly_slate.py uses the daily schedule pages)'}.")
     print("\nThe Game Predictor page will now offer this season. Re-run any time "
           "to pull refreshed ratings as the season progresses.")
 

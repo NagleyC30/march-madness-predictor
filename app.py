@@ -17,6 +17,7 @@ import model_explain as me
 import contest as ct
 import slate as sl
 import branding as brand
+import slate_page
 
 st.set_page_config(
     page_title=f"{brand.APP_NAME} — {brand.APP_TAGLINE}",
@@ -222,7 +223,7 @@ page = st.sidebar.radio(
     "Navigate",
     ["Overview",
      # ── Betting (the flagship) ──
-     "Betting Lab", "Me vs Machine",
+     "Betting Lab", "This Week's Slate", "Me vs Machine",
      # ── Prediction tools ──
      "Bracket Predictions", "Head-to-Head", "Game Predictor",
      # ── How good is the model? ──
@@ -232,7 +233,7 @@ page = st.sidebar.radio(
      "Custom Metric", "Data Explorer"],
     captions=[
         "Start here",
-        "Can it beat the market?", "You vs. the model",
+        "Can it beat the market?", "5 toss-ups, you vs. the model", "Any game you choose",
         "The predicted bracket", "Any two tourney teams", "Any game, any season",
         "Walk-forward accuracy", "Game-model calibration", "Classifier shoot-out",
         "Plain-English guide",
@@ -651,6 +652,14 @@ elif page == "Game Predictor":
 
 
 # ──────────────────────────────────────────────────────────────
+# PAGE: THIS WEEK'S SLATE  (automated weekly Me vs Machine — slate_page.py)
+# ──────────────────────────────────────────────────────────────
+
+elif page == "This Week's Slate":
+    slate_page.render()
+
+
+# ──────────────────────────────────────────────────────────────
 # PAGE: ME VS MACHINE  (the everlasting contest — manual entry)
 # ──────────────────────────────────────────────────────────────
 
@@ -687,6 +696,18 @@ elif page == "Me vs Machine":
         model = artifact["model"]
         meta = artifact["meta"]
         features = meta["features"]
+
+        # ── Storage check: never take a pick we can't save ──────────
+        storage_ok, storage_hint = ct.check_storage()
+        if not storage_ok:
+            st.error("**Can't reach the picks database, so the contest is paused.**  \n"
+                     + storage_hint)
+            st.caption("Picks already saved in Supabase are untouched. "
+                       "The exact error is in **Manage app → Logs**, on the line "
+                       "starting `[contest] Supabase connection failed`.")
+            if st.button("🔄 Try again"):
+                st.rerun()
+            st.stop()
 
         # ── Make your pick (blind) ──────────────────────────────────
         st.subheader("Make your pick")

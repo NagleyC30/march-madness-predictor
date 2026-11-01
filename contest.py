@@ -43,7 +43,8 @@ STAKE = 100.0
 
 COLUMNS = ["id", "created_utc", "season", "team_a", "team_b", "location",
            "user_pick", "user_conf", "model_pick", "model_prob_pick",
-           "ml_a", "ml_b", "status", "actual_winner", "settled_utc"]
+           "ml_a", "ml_b", "status", "actual_winner", "settled_utc",
+           "slate_game_id"]
 
 
 def _now():
@@ -97,6 +98,12 @@ _SCHEMA = [
         actual_winner    TEXT NOT NULL DEFAULT '',
         settled_utc      TIMESTAMPTZ
     )""",
+    # Weekly-slate games carry the slate's game id (weekly_slate.py); the unique
+    # index means each slate game can be picked exactly once. Manual entries
+    # leave it NULL. Added with IF NOT EXISTS so existing databases upgrade.
+    "ALTER TABLE contest_picks ADD COLUMN IF NOT EXISTS slate_game_id TEXT",
+    """CREATE UNIQUE INDEX IF NOT EXISTS contest_picks_slate_game
+       ON contest_picks (slate_game_id) WHERE slate_game_id IS NOT NULL""",
     # Commit-then-reveal, enforced by the database: the picks, teams and lock time
     # can never change; only a pending row can be settled; settled rows are final.
     """CREATE OR REPLACE FUNCTION contest_picks_guard() RETURNS trigger AS $$
@@ -120,7 +127,8 @@ _SCHEMA = [
            OR NEW.model_pick IS DISTINCT FROM OLD.model_pick
            OR NEW.model_prob_pick IS DISTINCT FROM OLD.model_prob_pick
            OR NEW.ml_a IS DISTINCT FROM OLD.ml_a
-           OR NEW.ml_b IS DISTINCT FROM OLD.ml_b THEN
+           OR NEW.ml_b IS DISTINCT FROM OLD.ml_b
+           OR NEW.slate_game_id IS DISTINCT FROM OLD.slate_game_id THEN
             RAISE EXCEPTION 'locked pick fields cannot be changed';
         END IF;
         IF NEW.status = 'settled' THEN
@@ -134,17 +142,93 @@ _SCHEMA = [
 ]
 
 
+class StorageUnavailable(RuntimeError):
+    """The Supabase database is configured but can't be reached. ``hint`` is a
+    plain-English next step that never contains the password or the URL."""
+
+    def __init__(self, hint, detail=""):
+        super().__init__(hint)
+        self.hint = hint
+        self.detail = detail
+
+
+# Known psycopg2 / Supabase connection failures → what to do about them.
+_HINTS = [
+    (("could not translate host name",),
+     "The database host name can't be found. If it starts with `db.` you're using "
+     "Supabase's *direct* connection, which Streamlit Cloud can't reach. Use the "
+     "**Session pooler** string instead (host `aws-0-<region>.pooler.supabase.com`). "
+     "If your password contains `@`, `#`, `/`, `:` or `?`, URL-encode it, or reset it "
+     "to letters and numbers only."),
+    (("network is unreachable", "cannot assign requested address"),
+     "The host only has an IPv6 address, which Streamlit Cloud can't reach. "
+     "Switch to Supabase's **Session pooler** connection string."),
+    (("tenant or user not found",),
+     "The pooler doesn't recognise the user. With the Session pooler the username "
+     "must be `postgres.<project-ref>`, not just `postgres`, and the host's region "
+     "must match your project."),
+    (("password authentication failed",),
+     "Supabase rejected the password. Reset it under **Project Settings → Database**, "
+     "then update the `db_url` secret."),
+    (("timeout", "timed out", "connection refused", "server closed the connection",
+      "could not receive data"),
+     "The database isn't answering. Supabase **pauses free projects after a week "
+     "without use**: open your project at supabase.com and click **Restore project**, "
+     "wait a minute or two, then reload this page."),
+    (("invalid dsn", "invalid integer value", "invalid port"),
+     "The `db_url` secret isn't a valid connection string. Copy it again from Supabase "
+     "(Session pooler) and URL-encode any special characters in the password."),
+]
+_GENERIC_HINT = ("Couldn't connect to the Supabase database. Check the `[supabase] db_url` "
+                 "secret and that the Supabase project is running (not paused).")
+
+
+def _diagnose(err):
+    """Map a connection error to a safe, actionable hint (no secrets in it)."""
+    orig = getattr(err, "orig", err)
+    msg = str(orig).strip().lower()
+    for needles, hint in _HINTS:
+        if any(n in msg for n in needles):
+            return hint
+    return _GENERIC_HINT
+
+
 def _get_engine():
-    """Create (once per URL) the engine and make sure the table + guard exist."""
+    """Create (once per URL) the engine and make sure the table + guard exist.
+
+    Raises StorageUnavailable (with a plain-English hint) when the database is
+    configured but unreachable. A failed engine is never cached, so the next
+    page load retries — e.g. after you restore a paused Supabase project."""
     global _engine, _engine_url
     url = _db_url()
     if _engine is None or _engine_url != url:
-        _engine = sa.create_engine(url, pool_pre_ping=True, pool_recycle=300)
-        with _engine.begin() as con:
-            for stmt in _SCHEMA:
-                con.execute(sa.text(stmt))
-        _engine_url = url
+        try:
+            eng = sa.create_engine(url, pool_pre_ping=True, pool_recycle=300,
+                                   connect_args={"connect_timeout": 10})
+            with eng.begin() as con:
+                for stmt in _SCHEMA:
+                    con.execute(sa.text(stmt))
+        except (sa.exc.OperationalError, sa.exc.ArgumentError,
+                sa.exc.InterfaceError, ValueError) as e:
+            detail = str(getattr(e, "orig", e)).strip().splitlines()
+            print(f"[contest] Supabase connection failed: "
+                  f"{type(e).__name__}: {detail[0] if detail else ''}", flush=True)
+            raise StorageUnavailable(_diagnose(e), detail[0] if detail else "") from e
+        _engine, _engine_url = eng, url
     return _engine
+
+
+def check_storage():
+    """(ok, hint). Opens the database connection if one is configured; CSV mode
+    is always ok. Call this before showing a pick form, so you never lock a pick
+    that can't be saved."""
+    if not _use_db():
+        return True, None
+    try:
+        _get_engine()
+        return True, None
+    except StorageUnavailable as e:
+        return False, e.hint
 
 
 def _use_db():
@@ -160,7 +244,8 @@ def _normalize(df):
     # string assignment (e.g. settling writes a timestamp). Force every text
     # column to object/"" so equality checks and later writes both work.
     str_cols = ["created_utc", "team_a", "team_b", "location", "user_pick",
-                "model_pick", "status", "actual_winner", "settled_utc"]
+                "model_pick", "status", "actual_winner", "settled_utc",
+                "slate_game_id"]
     for c in str_cols:
         df[c] = df[c].fillna("").astype(str).replace({"nan": "", "NaT": ""})
     return df[COLUMNS]
@@ -187,25 +272,38 @@ def save_picks(df):
     df.to_csv(PICKS_FILE, index=False)
 
 
+class AlreadyPicked(ValueError):
+    """A pick for this weekly-slate game is already locked."""
+
+
 def add_pick(season, team_a, team_b, location, user_pick,
-             model_pick, model_prob_pick, user_conf=None, ml_a=None, ml_b=None):
+             model_pick, model_prob_pick, user_conf=None, ml_a=None, ml_b=None,
+             slate_game_id=None):
     """Record one game: my pick and the model's pick, captured together and
-    timestamped. Returns the new row id."""
+    timestamped. Returns the new row id. ``slate_game_id`` ties the pick to a
+    weekly-slate game; a second pick for the same game raises AlreadyPicked."""
     if _use_db():
-        with _get_engine().begin() as con:
-            return int(con.execute(sa.text(
-                """INSERT INTO contest_picks
-                   (season, team_a, team_b, location, user_pick, user_conf,
-                    model_pick, model_prob_pick, ml_a, ml_b)
-                   VALUES (:season, :team_a, :team_b, :location, :user_pick,
-                           :user_conf, :model_pick, :prob, :ml_a, :ml_b)
-                   RETURNING id"""),
-                {"season": int(season), "team_a": team_a, "team_b": team_b,
-                 "location": location, "user_pick": user_pick,
-                 "user_conf": user_conf, "model_pick": model_pick,
-                 "prob": round(float(model_prob_pick), 4),
-                 "ml_a": ml_a, "ml_b": ml_b}).scalar_one())
+        try:
+            with _get_engine().begin() as con:
+                return int(con.execute(sa.text(
+                    """INSERT INTO contest_picks
+                       (season, team_a, team_b, location, user_pick, user_conf,
+                        model_pick, model_prob_pick, ml_a, ml_b, slate_game_id)
+                       VALUES (:season, :team_a, :team_b, :location, :user_pick,
+                               :user_conf, :model_pick, :prob, :ml_a, :ml_b, :sg)
+                       RETURNING id"""),
+                    {"season": int(season), "team_a": team_a, "team_b": team_b,
+                     "location": location, "user_pick": user_pick,
+                     "user_conf": user_conf, "model_pick": model_pick,
+                     "prob": round(float(model_prob_pick), 4),
+                     "ml_a": ml_a, "ml_b": ml_b, "sg": slate_game_id}).scalar_one())
+        except sa.exc.IntegrityError as e:
+            if slate_game_id and "contest_picks_slate_game" in str(e):
+                raise AlreadyPicked("You already locked a pick for this game.") from e
+            raise
     df = load_picks()
+    if slate_game_id and (df["slate_game_id"] == slate_game_id).any():
+        raise AlreadyPicked("You already locked a pick for this game.")
     new_id = 1 if df.empty else int(pd.to_numeric(df["id"]).max()) + 1
     row = {
         "id": new_id, "created_utc": _now(), "season": season,
@@ -214,6 +312,7 @@ def add_pick(season, team_a, team_b, location, user_pick,
         "model_pick": model_pick, "model_prob_pick": round(float(model_prob_pick), 4),
         "ml_a": ml_a, "ml_b": ml_b, "status": "pending",
         "actual_winner": "", "settled_utc": "",
+        "slate_game_id": slate_game_id or "",
     }
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     save_picks(df)
