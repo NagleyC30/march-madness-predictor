@@ -1,0 +1,6 @@
+# Minimal deps for the scheduled weekly-slate job (GitHub Actions).
+# Same pins as requirements.txt so the committed game_model.joblib unpickles.
+pandas>=2.2,<3.1
+numpy>=1.26,<2.6
+scikit-learn>=1.9,<1.10
+joblib>=1.4,<1.6

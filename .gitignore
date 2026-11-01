@@ -12,6 +12,7 @@ env/
 # Local logs / scratch output
 precompute_log.txt
 model_3_0_output.txt
+logs/
 
 # Secrets — the CBBD API key (fetch_cbb_lines.py). NEVER commit it.
 .cbbd_key

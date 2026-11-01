@@ -1,0 +1,61 @@
+# Builds next week's Me-vs-Machine slate every Sunday morning and commits it to
+# main. Streamlit Cloud redeploys on the push, so the slate shows up on the
+# "This Week's Slate" page. Scheduled runs only fire from the default branch.
+#
+# Install: move this file to .github/workflows/weekly-slate.yml (see the guide).
+name: Weekly slate
+
+on:
+  schedule:
+    - cron: "0 14 * * 0"        # Sundays 14:00 UTC = 9 a.m. EST / 10 a.m. EDT
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "Any date (YYYY-MM-DD) in the week to build. Blank = next week."
+        required: false
+      dry_run:
+        description: "Dry run: fetch and print the matchups, commit nothing."
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: slate-repo-writes
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-jobs.txt
+      - run: pip install -r requirements-jobs.txt
+      - name: Build slate
+        env:
+          WEEK: ${{ github.event.inputs.week }}
+          DRY: ${{ github.event.inputs.dry_run }}
+        run: |
+          args=""
+          if [ -n "$WEEK" ]; then args="$args --week $WEEK"; fi
+          if [ "$DRY" = "true" ]; then args="$args --dry-run"; fi
+          python weekly_slate.py $args
+      - name: Commit slate
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/slates
+          if git diff --cached --quiet; then
+            echo "No new slate to commit."
+          else
+            git commit -m "Weekly slate: $(ls -t data/slates | head -1)"
+            git pull --rebase
+            git push
+          fi

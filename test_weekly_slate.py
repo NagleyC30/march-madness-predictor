@@ -177,9 +177,18 @@ def test_end_to_end_mocked_network():
     with tempfile.TemporaryDirectory() as d, \
             mock.patch.object(ws, "SLATE_DIR", d), \
             mock.patch.object(ws, "_get", fetch), \
+            mock.patch.object(ws._time, "sleep", lambda s: None), \
             mock.patch.object(ws.fd, "parse_team_results", lambda y: r27):
-        empty = ws.build_slate(date(2026, 11, 3), today=date(2026, 11, 1))   # no games that week
+        try:                                   # nothing listed at all that week
+            ws.build_slate(date(2026, 11, 3), today=date(2026, 11, 1))
+            raise AssertionError("an empty week must abort")
+        except ws.IncompleteSchedule:
+            pass
+        # games listed, but none pass a (deliberately impossible) gate
+        empty = ws.build_slate(date(2026, 11, 9), today=date(2026, 11, 8), both_top=0)
         assert empty.empty and not os.listdir(d), "empty slate must not be frozen"
+        dry = ws.build_slate(date(2026, 11, 9), today=date(2026, 11, 8), dry_run=True)
+        assert len(dry) == 5 and not os.listdir(d), "dry run writes nothing"
         out = ws.build_slate(date(2026, 11, 9), today=date(2026, 11, 8))
         assert len(out) == 5
         assert os.path.exists(os.path.join(d, "2027_2026-11-09.csv"))
@@ -190,12 +199,45 @@ def test_end_to_end_mocked_network():
         assert (mid.date >= "2026-11-12").all()
 
 
+def test_fetch_retries_empty_pages_and_guards_saturday():
+    good = "<table>" + _page_row("Duke", "Kansas", neutral=True) + "</table>"
+    calls = []
+
+    def flaky(url):                      # every day's first request comes back empty
+        calls.append(url)
+        return good if calls.count(url) > 1 else "<html></html>"
+
+    g = ws.fetch_week_schedule(date(2026, 11, 9), fetch=flaky, pause=0)
+    assert len(g) == 7 and len(calls) == 14, "each day retried once"
+
+    def no_saturday(url):
+        return "<html></html>" if "20261114" in url else good
+    try:
+        ws.fetch_week_schedule(date(2026, 11, 9), fetch=no_saturday, pause=0)
+        raise AssertionError("an empty Saturday must abort")
+    except ws.IncompleteSchedule:
+        pass
+
+    def no_monday(url):                  # a quiet weekday is allowed
+        return "<html></html>" if "20261109" in url else good
+    assert len(ws.fetch_week_schedule(date(2026, 11, 9), fetch=no_monday, pause=0)) == 6
+
+
+def test_cli_exit_codes_and_dry_run():
+    with mock.patch.object(ws, "build_slate", return_value=pd.DataFrame()):
+        assert ws.main(["--week", "2026-11-11"]) == 1, "empty week must fail the job"
+    with mock.patch.object(ws, "build_slate", return_value=pd.DataFrame([{"a": 1}])) as b:
+        assert ws.main(["--week", "2026-11-11", "--dry-run"]) == 0
+    assert b.call_args.kwargs["dry_run"] is True
+
+
 def test_cli_parses():
     # the Sunday GitHub Action runs this exact entry point
     with mock.patch.object(ws, "build_slate") as b:
         ws.main(["--week", "2026-11-11"])
     (wk,), kw = b.call_args
     assert wk == date(2026, 11, 11) and kw["k"] == 5 and kw["both_top"] == 75
+    assert kw["dry_run"] is False
 
 
 if __name__ == "__main__":
