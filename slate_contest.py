@@ -25,6 +25,7 @@ import contest as ct
 
 DATA_DIR = "data"
 SLATE_DIR = os.path.join(DATA_DIR, "slates")
+STATS_SUBDIR = "stats"          # data/slates/stats/<slate_id>.csv, from weekly_slate.py
 ET = ZoneInfo("America/New_York")
 
 
@@ -47,6 +48,15 @@ def load_slates(slate_dir=None):
         df["tip_et"] = ""
     df["neutral"] = df["neutral"].astype(str).str.lower().isin(["true", "1"])
     return df.sort_values(["week_start", "date", "game_id"]).reset_index(drop=True)
+
+
+def load_stats(slate_id, slate_dir=None):
+    """The team-stats snapshot frozen with a slate (empty if that slate predates
+    the stats feature). One row per (game_id, side)."""
+    path = os.path.join(slate_dir or SLATE_DIR, STATS_SUBDIR, f"{slate_id}.csv")
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    return pd.read_csv(path, keep_default_na=False)
 
 
 def lock_time(game_date, tip_et=""):
@@ -101,20 +111,52 @@ def slate_picks():
     })
 
 
+def _check_open(g, user_pick, at):
+    if user_pick not in (g["home"], g["away"]):
+        raise ValueError(f"{user_pick} isn't playing in this game.")
+    if is_locked(g["date"], g.get("tip_et", ""), at):
+        raise ValueError("This game is locked — picks close at tip-off.")
+
+
+def save_draft(slate_row, user_pick, at=None):
+    """Save a pick WITHOUT locking it: it can be changed, it never counts, and
+    it doesn't reveal the model's pick. Lock it before tip-off to make it count."""
+    _check_open(slate_row, user_pick, at)
+    ct.save_draft(slate_row["game_id"], user_pick)
+
+
+def drafts():
+    """Saved drafts: game_id, draft_pick, draft_saved_utc."""
+    d = ct.load_drafts()
+    return d.rename(columns={"user_pick": "draft_pick", "saved_utc": "draft_saved_utc"})
+
+
 def lock_pick(slate_row, user_pick, at=None):
     """Record your pick for one slate game, with the model's frozen pick from
     the slate. Refuses a team not in the game or a locked game; a second pick
     for the same game raises contest.AlreadyPicked. Returns the contest row id."""
     g = slate_row
-    if user_pick not in (g["home"], g["away"]):
-        raise ValueError(f"{user_pick} isn't playing in this game.")
-    if is_locked(g["date"], g.get("tip_et", ""), at):
-        raise ValueError("This game is locked — picks close at tip-off.")
+    _check_open(g, user_pick, at)
     # contest orientation: team_a = away, team_b = home ('B' = team_b at home)
-    return ct.add_pick(int(g["season"]), g["away"], g["home"],
-                       "N" if bool(g["neutral"]) else "B", user_pick,
-                       g["model_pick"], float(g["model_prob_pick"]),
-                       slate_game_id=g["game_id"])
+    pick_id = ct.add_pick(int(g["season"]), g["away"], g["home"],
+                          "N" if bool(g["neutral"]) else "B", user_pick,
+                          g["model_pick"], float(g["model_prob_pick"]),
+                          slate_game_id=g["game_id"])
+    ct.delete_draft(g["game_id"])          # the locked pick supersedes the draft
+    return pick_id
+
+
+def lock_saved_drafts(board, at=None):
+    """Lock every open game that has a saved draft, as drafted. Returns
+    (locked_count, errors)."""
+    n, errors = 0, []
+    for g in board[(board["state"] == "open") & board["draft_pick"].notna()].to_dict("records"):
+        try:
+            lock_pick(g, g["draft_pick"], at)
+            n += 1
+        except ValueError as e:              # incl. contest.AlreadyPicked
+            errors.append(f"{g['away']} vs {g['home']}: {e}")
+    return n, errors
 
 
 def record_winner(pick_id, winner):
@@ -126,14 +168,20 @@ def record_winner(pick_id, winner):
 # GAME STATE + SCOREBOARD
 # ──────────────────────────────────────────────────────────────
 
-def game_board(slates, picks, at=None):
+def game_board(slates, picks, at=None, drafts_df=None):
     """One row per slate game with what the page needs:
     state ∈ open | picked | missed | final; reveal (may we show the model's
-    pick?); correctness once final."""
+    pick?); correctness once final; draft_pick (saved, not locked — never
+    counts and never reveals anything)."""
     at = at or now_utc()
     if slates.empty:
         return slates
     b = slates.merge(picks, on="game_id", how="left")
+    if drafts_df is None or drafts_df.empty:
+        drafts_df = pd.DataFrame(columns=["game_id", "draft_pick", "draft_saved_utc"])
+    b = b.merge(drafts_df[["game_id", "draft_pick", "draft_saved_utc"]],
+                on="game_id", how="left")
+    b["draft_pick"] = b["draft_pick"].astype(object).where(b["draft_pick"].notna(), None)
     b["lock_at"] = [lock_time(d, t) for d, t in zip(b["date"], b["tip_et"])]
     # the database stamps created_utc; a pick only counts if it beat the lock
     b["picked_in_time"] = [

@@ -139,6 +139,13 @@ _SCHEMA = [
     "DROP TRIGGER IF EXISTS contest_picks_guard ON contest_picks",
     """CREATE TRIGGER contest_picks_guard BEFORE UPDATE OR DELETE ON contest_picks
        FOR EACH ROW EXECUTE FUNCTION contest_picks_guard()""",
+    # Saved-but-not-locked slate picks. Deliberately a separate table: drafts
+    # can change any time and never count, while contest_picks stays append-only.
+    """CREATE TABLE IF NOT EXISTS slate_drafts (
+        game_id    TEXT PRIMARY KEY,
+        user_pick  TEXT NOT NULL,
+        saved_utc  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )""",
 ]
 
 
@@ -407,3 +414,56 @@ def scoreboard(df=None):
         "user_pnl": round(sum(user_pnls), 2), "model_pnl": round(sum(model_pnls), 2),
         "n_user_bets": len(user_pnls), "n_model_bets": len(model_pnls),
     }
+
+
+# ── Slate drafts (saved, not locked) ────────────────────────────
+
+DRAFT_COLUMNS = ["game_id", "user_pick", "saved_utc"]
+
+
+def _drafts_file():
+    return os.path.join(DATA_DIR, "slate_drafts.csv")
+
+
+def load_drafts():
+    """Saved-but-unlocked slate picks: game_id, user_pick, saved_utc."""
+    if _use_db():
+        df = pd.read_sql(sa.text("SELECT game_id, user_pick, saved_utc FROM slate_drafts"),
+                         _get_engine())
+        df["saved_utc"] = pd.to_datetime(df["saved_utc"], utc=True).dt.strftime(
+            "%Y-%m-%dT%H:%M:%S+00:00")
+        return df[DRAFT_COLUMNS]
+    path = _drafts_file()
+    if not os.path.exists(path):
+        return pd.DataFrame(columns=DRAFT_COLUMNS)
+    return pd.read_csv(path, dtype=str)[DRAFT_COLUMNS]
+
+
+def save_draft(game_id, user_pick):
+    """Save (or change) a draft pick for a slate game. A draft never counts and
+    never reveals the model's pick; only locking does."""
+    if _use_db():
+        with _get_engine().begin() as con:
+            con.execute(sa.text(
+                """INSERT INTO slate_drafts (game_id, user_pick) VALUES (:g, :p)
+                   ON CONFLICT (game_id) DO UPDATE
+                   SET user_pick = EXCLUDED.user_pick, saved_utc = now()"""),
+                {"g": game_id, "p": user_pick})
+        return
+    df = load_drafts()
+    df = df[df["game_id"] != game_id]
+    df = pd.concat([df, pd.DataFrame([{"game_id": game_id, "user_pick": user_pick,
+                                       "saved_utc": _now()}])], ignore_index=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    df.to_csv(_drafts_file(), index=False)
+
+
+def delete_draft(game_id):
+    if _use_db():
+        with _get_engine().begin() as con:
+            con.execute(sa.text("DELETE FROM slate_drafts WHERE game_id = :g"),
+                        {"g": game_id})
+        return
+    df = load_drafts()
+    if (df["game_id"] == game_id).any():
+        df[df["game_id"] != game_id].to_csv(_drafts_file(), index=False)

@@ -41,6 +41,18 @@ def _slate(tmp):
     os.makedirs(os.path.join(tmp, "slates"), exist_ok=True)
     pd.DataFrame(rows).to_csv(os.path.join(tmp, "slates", "2027_2026-11-09.csv"),
                               index=False)
+    os.makedirs(os.path.join(tmp, "slates", "stats"), exist_ok=True)
+    stats = []
+    for r in rows:
+        for side in ("away", "home"):
+            stats.append({"slate_id": r["slate_id"], "game_id": r["game_id"], "side": side,
+                          "team": r[side], "record": "0-0", "conf_record": "0-0",
+                          "trank": 7 if side == "away" else 21,
+                          "adjoe": 118.4, "adjoe_rank": 12, "adjde": 95.1, "adjde_rank": 9,
+                          "adjt": 68.2, "adjt_rank": 150, "sos": "", "sos_rank": "",
+                          "wab": "", "wab_rank": "", "rest": "Opener", "as_of": "2026-11-08"})
+    pd.DataFrame(stats).to_csv(os.path.join(tmp, "slates", "stats", "2027_2026-11-09.csv"),
+                               index=False)
     return sc.load_slates(os.path.join(tmp, "slates"))
 
 
@@ -63,6 +75,7 @@ class _Store:
             eng = sa.create_engine(self.db.replace("postgresql://", "postgresql+psycopg2://"))
             with eng.begin() as c:
                 c.execute(sa.text("DROP TABLE IF EXISTS contest_picks"))
+                c.execute(sa.text("DROP TABLE IF EXISTS slate_drafts"))
         else:
             os.environ.pop("SUPABASE_DB_URL", None)
         return self
@@ -155,6 +168,53 @@ def check_board_with_no_picks(db=None):
         assert sc.scoreboard(b) == {"n": 0}
 
 
+def check_drafts(db=None):
+    """Drafts can change, never count, never reveal; locking supersedes them."""
+    with tempfile.TemporaryDirectory() as d, _Store(d, db):
+        slate = _slate(d)
+        g0, g1, g2 = (slate.iloc[i].to_dict() for i in range(3))
+        early = at("2026-11-09T12:00:00-05:00")
+        sc.save_draft(g0, "Houston", early)
+        sc.save_draft(g0, "VCU", early)                  # changing a draft is fine
+        sc.save_draft(g1, "Michigan", early)
+        sc.save_draft(g2, "TCU", early)
+        dr = sc.drafts().set_index("game_id")
+        assert dr.loc[g0["game_id"], "draft_pick"] == "VCU" and len(dr) == 3
+        try:
+            sc.save_draft(g0, "Duke", early)
+            raise AssertionError("team not in game")
+        except ValueError:
+            pass
+        try:
+            sc.save_draft(g0, "VCU", at("2026-11-10T19:00:01-05:00"))
+            raise AssertionError("can't draft a locked game")
+        except ValueError:
+            pass
+        assert ct.load_picks().empty, "a draft is not a pick"
+        b = sc.game_board(slate, sc.slate_picks(), early, sc.drafts()).set_index("game_id")
+        assert b.loc[g0["game_id"], "state"] == "open"
+        assert not b.loc[g0["game_id"], "reveal"], "a draft never reveals the model"
+        assert b.loc[g0["game_id"], "draft_pick"] == "VCU"
+        # lock one directly: its draft goes away, the pick is what was locked
+        sc.lock_pick(g1, "Kansas", early)
+        assert g1["game_id"] not in set(sc.drafts().game_id)
+        # lock the rest of the drafts in one go
+        b = sc.game_board(slate, sc.slate_picks(), early, sc.drafts())
+        n, errors = sc.lock_saved_drafts(b, early)
+        assert (n, errors) == (2, [])
+        p = ct.load_picks().set_index("slate_game_id")
+        assert p.loc[g0["game_id"], "user_pick"] == "VCU"
+        assert p.loc[g1["game_id"], "user_pick"] == "Kansas"
+        assert sc.drafts().empty
+        # a draft left unlocked past tip-off is simply missed
+        g4 = slate.iloc[4].to_dict()
+        sc.save_draft(g4, "Utah", early)
+        late = at("2026-11-15T15:00:00-05:00")
+        b = sc.game_board(slate, sc.slate_picks(), late, sc.drafts()).set_index("game_id")
+        assert b.loc[g4["game_id"], "state"] == "missed"
+        assert sc.scoreboard(b.reset_index()).get("n", 0) == 0
+
+
 def check_existing_db_upgrades(db):
     """A contest_picks table created before slates existed gains the column."""
     import sqlalchemy as sa
@@ -208,7 +268,19 @@ def check_page(db=None):
                            "Model: **Louisville**", "Model: **Miami FL**"):
                 assert hidden not in text, f"leaked {hidden}"
             assert "Next lock: Wed Nov 11, 8:30 PM ET" in text, text
+            assert "| Adj. offense | 118.4 (#12) |" in text and "| T-Rank | #7 | #21 |" in text
+            assert "— (no games yet)" in text, "preseason SOS/WAB show a dash"
+            assert "frozen as of Sun Nov 8" in " ".join(c.value for c in app.caption)
             gid = slate.game_id
+            # save a draft through the UI: stays open and keeps the model hidden
+            app.radio(key=f"pick_{gid[2]}").set_value("SMU").run()
+            app.button(key=f"draft_{gid[2]}").click().run()
+            assert not app.exception, app.exception
+            text = " ".join(m.value for m in app.markdown)
+            assert "Model: **TCU**" not in text, "saving a draft must not reveal"
+            assert "Draft saved: **SMU**" in " ".join(c.value for c in app.caption)
+            assert ct.load_picks().slate_game_id.tolist() == [gid[0]]
+            assert any("Lock all saved drafts (1)" in b.label for b in app.button)
             app.radio(key=f"pick_{gid[1]}").set_value("Michigan").run()
             app.button(key=f"lock_{gid[1]}").click().run()
             assert not app.exception, app.exception
@@ -228,7 +300,7 @@ if __name__ == "__main__":
     db = os.environ.get("TEST_DB")
     plain = [check_lock_time, check_current_slate_id]
     stored = [check_board_with_no_picks, check_lock_pick_rules,
-              check_board_states_and_scoreboard, check_page]
+              check_board_states_and_scoreboard, check_drafts, check_page]
     for t in plain:
         t(); print(f"ok  {t.__name__}")
     for t in stored:

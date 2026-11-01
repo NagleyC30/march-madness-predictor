@@ -75,6 +75,9 @@ def test_parse_real_schedule_page():
     assert (h.AWAY, h.HOME, bool(h.NEUTRAL)) == ("Texas A&M", "Iowa St.", False)
     done = ws.parse_schedule_page(_page_row("A", "B", result="W, 70-60"), "2026-11-03")
     assert done.PLAYED.all()
+    allg = ws.parse_schedule_page(REAL_ROWS, "2026-11-02", include_non_d1=True)
+    assert len(allg) == 2 and allg.D1.tolist() == [True, False]
+    assert allg.iloc[1].HOME == "West Florida"
 
 
 def test_entropy():
@@ -161,6 +164,56 @@ def test_frozen_slate_not_regenerated():
         assert again.model_pick.tolist() == rows.model_pick.tolist()
 
 
+def _raw(ratings):
+    """A raw team_results-style frame (what team_tables returns second)."""
+    raw = ratings.copy()
+    raw["record"], raw["Con Rec."] = "3-1", "1-0"
+    return raw
+
+
+def test_team_tables_parses_real_header():
+    header = ("rank,team,conf,record,adjoe,oe Rank,adjde,de Rank,barthag,rank,proj. W,"
+              "Proj. L,Pro Con W,Pro Con L,Con Rec.,sos,ncsos,consos,Proj. SOS,"
+              "Proj. Noncon SOS,Proj. Con SOS,elite SOS,elite noncon SOS,Opp OE,Opp DE,"
+              "Opp Proj. OE,Opp Proj DE,Con Adj OE,Con Adj DE,Qual O,Qual D,Qual Barthag,"
+              "Qual Games,FUN,ConPF,ConPA,ConPoss,ConOE,ConDE,ConSOSRemain,Conf Win%,WAB,"
+              "WAB Rk,Fun Rk,adjt")       # copied from 2027_team_results.csv, 2026-11-01
+    n = len(header.split(","))
+    row = lambda team, rec: ",".join(
+        ["1", team, "B10", rec] + ["1"] * (n - 5) + ["68.5"]).replace(",1,", f",{1},", 1)
+    text = header + "\r\n" + row("Michigan", "2-0") + "\r\n" + row("Duke", "1-1") + "\r\n"
+    ratings, raw = ws.team_tables(2027, text=text)
+    assert raw.loc[raw.TEAM == "Michigan", "record"].item() == "2-0"
+    assert "Con Rec." in raw.columns and "adjt" in raw.columns
+    assert set(gm.get_features(gm.load_ratings())) <= set(ratings.columns)
+
+
+def test_team_stats_ranks_rest_and_preseason_blanks():
+    raw = pd.DataFrame({
+        "TEAM": ["A", "B", "C"], "record": ["0-0", "2-1", "1-0"], "Con Rec.": ["0-0", "", ""],
+        "adjoe": [120.0, 110.0, 100.0], "adjde": [95.0, 90.0, 100.0],
+        "barthag": [.9, .8, .5], "adjt": [70.0, 65.0, 68.0],
+        "sos": [0.0, 0.0, 0.0], "WAB": [0.0, 0.0, 0.0]})          # preseason: no variation
+    slate = pd.DataFrame([{"slate_id": "s", "game_id": "g1", "date": "2026-11-12",
+                           "away": "A", "home": "B"},
+                          {"slate_id": "s", "game_id": "g2", "date": "2026-11-14",
+                           "away": "C", "home": "Z"}])           # Z isn't rated
+    sched = pd.DataFrame([{"DATE": "2026-11-09", "HOME": "B", "AWAY": "x"},
+                          {"DATE": "2026-11-12", "HOME": "B", "AWAY": "A"},   # the game itself
+                          {"DATE": "2026-11-13", "HOME": "C", "AWAY": "y"}])
+    st = ws.team_stats(raw, slate, sched, as_of="2026-11-08").set_index("team")
+    assert st.loc["A", "trank"] == 1 and st.loc["B", "adjde_rank"] == 1   # lower D is better
+    assert st.loc["A", "adjt_rank"] == 1                                   # fastest
+    assert st.loc["A", "sos_rank"] == "" and st.loc["A", "wab_rank"] == "", "no fake #1s"
+    assert st.loc["A", "rest"] == "Opener"           # 0-0, nothing earlier
+    assert st.loc["B", "rest"] == "3 days"           # Mon -> Thu
+    assert st.loc["C", "rest"] == "1 day"            # Fri -> Sat
+    assert "Z" not in st.index
+    st2 = ws.team_stats(raw.assign(record="4-0"), slate, sched.iloc[1:2], as_of="x",
+                        window_ok=False).set_index("team")
+    assert st2.loc["A", "rest"] == "", "unknown when the look-back pull failed"
+
+
 def test_end_to_end_mocked_network():
     r = gm.load_ratings()
     r27 = r[r.YEAR == r.YEAR.max()]
@@ -173,14 +226,17 @@ def test_end_to_end_mocked_network():
             a, h = rng.choice(teams, 2, replace=False)
             rows.append(_page_row(a, h, neutral=rng.random() < .25))
         pages[f"202611{day:02d}"] = "<table>" + "".join(rows) + "</table>"
-    fetch = lambda url: pages.get(url.split("date=")[1][:8], "<table></table>")
+    prior = {f"202611{day:02d}": "<table>" + "".join(
+        _page_row(*rng.choice(teams, 2, replace=False)) for _ in range(30)) + "</table>"
+        for day in range(2, 9)}                    # the week before, for rest days
+    fetch = lambda url: {**prior, **pages}.get(url.split("date=")[1][:8], "<table></table>")
     with tempfile.TemporaryDirectory() as d, \
             mock.patch.object(ws, "SLATE_DIR", d), \
             mock.patch.object(ws, "_get", fetch), \
             mock.patch.object(ws._time, "sleep", lambda s: None), \
-            mock.patch.object(ws.fd, "parse_team_results", lambda y: r27):
+            mock.patch.object(ws, "team_tables", lambda y: (r27, _raw(r27))):
         try:                                   # nothing listed at all that week
-            ws.build_slate(date(2026, 11, 3), today=date(2026, 11, 1))
+            ws.build_slate(date(2026, 10, 26), today=date(2026, 10, 25))
             raise AssertionError("an empty week must abort")
         except ws.IncompleteSchedule:
             pass
@@ -194,6 +250,11 @@ def test_end_to_end_mocked_network():
         assert os.path.exists(os.path.join(d, "2027_2026-11-09.csv"))
         assert out.date.between("2026-11-09", "2026-11-15").all()
         assert (out.tip_et == "07:00 PM").all()
+        # the card stats are frozen next to the slate: one row per team per game
+        st = pd.read_csv(os.path.join(d, "stats", "2027_2026-11-09.csv"), keep_default_na=False)
+        assert len(st) == 10 and set(st.game_id) == set(out.game_id)
+        assert set(st.side) == {"away", "home"} and (st.as_of == "2026-11-08").all()
+        assert st.rest.str.match(r"^(\d+ days?|Opener|7\+ days)$").all(), st.rest.tolist()
         # built mid-week (Wed), the slate skips Mon-Wed games
         mid = ws.build_slate(date(2026, 11, 9), today=date(2026, 11, 11), overwrite=True)
         assert (mid.date >= "2026-11-12").all()

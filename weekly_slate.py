@@ -155,12 +155,13 @@ _TITLE = re.compile(r'title="([^"]*)"', re.I)
 _TAGS = re.compile(r"<[^>]+>")
 
 
-def parse_schedule_page(page, game_date):
-    """Games listed on one Barttorvik schedule page (D1 vs D1 only).
+def parse_schedule_page(page, game_date, include_non_d1=False):
+    """Games listed on one Barttorvik schedule page.
 
     Returns a frame with YEAR, DATE, AWAY, HOME, NEUTRAL, GAME_TYPE, PLAYED,
-    TIP_ET ('07:00 PM', or '' if missing), TV and VENUE. Pure function, so
-    tests can feed saved pages."""
+    TIP_ET ('07:00 PM', or '' if missing), TV, VENUE and D1. Only D1-vs-D1
+    games unless ``include_non_d1`` (rest-day counting needs every game).
+    Pure function, so tests can feed saved pages."""
     d = game_date if isinstance(game_date, date) else date.fromisoformat(str(game_date))
     out = []
     for row in _ROW.findall(page):
@@ -172,7 +173,8 @@ def parse_schedule_page(page, game_date):
         ranks = _RANK.findall(cell)
         if len(teams) != 2:
             continue
-        if len(ranks) == 2 and "0" in [r.strip() for r in ranks]:
+        d1 = not (len(ranks) == 2 and "0" in [r.strip() for r in ranks])
+        if not d1 and not include_non_d1:
             continue                       # non-D1 opponent
         first, second = (htmllib.unescape(t).strip() for t in teams)
         between = _TAGS.sub(" ", cell.split(teams[0], 1)[1].split(teams[1], 1)[0])
@@ -188,9 +190,10 @@ def parse_schedule_page(page, game_date):
             "TIP_ET": tm.group(1).upper().replace("  ", " ") if tm else "",
             "TV": htmllib.unescape(tv.group(1)).strip() if tv else "",
             "VENUE": htmllib.unescape(venue.group(1)).strip() if venue else "",
+            "D1": d1,
         })
     cols = ["YEAR", "DATE", "AWAY", "HOME", "NEUTRAL", "GAME_TYPE", "PLAYED",
-            "TIP_ET", "TV", "VENUE"]
+            "TIP_ET", "TV", "VENUE", "D1"]
     return pd.DataFrame(out, columns=cols)
 
 
@@ -206,28 +209,45 @@ class IncompleteSchedule(RuntimeError):
     2026-11-01 a fast pull missed every weekend game this way."""
 
 
-def fetch_week_schedule(week_start, fetch=None, pause=1.5, retries=2):
-    """Every D1-vs-D1 game Monday..Sunday from the daily schedule pages.
-
-    Requests are spaced ``pause`` seconds apart, and a day with no games is
-    re-fetched ``retries`` more times (with a longer wait) before it's accepted
-    as genuinely empty. A Saturday that stays empty raises IncompleteSchedule:
-    in-season Saturdays always have games, so it means the pull failed."""
+def fetch_days(start, n_days, fetch=None, pause=1.5, retries=2, include_non_d1=False):
+    """Schedule pages for ``n_days`` days from ``start``. Requests are spaced
+    ``pause`` seconds apart and an empty day is re-fetched ``retries`` more
+    times (longer waits each time). Returns (games, empty_days)."""
     fetch = fetch or _get
     frames, empty = [], []
-    for i in range(7):
-        d = week_start + timedelta(days=i)
+    for i in range(n_days):
+        d = start + timedelta(days=i)
         url = SCHEDULE_URL.format(ymd=d.strftime("%Y%m%d"))
         for attempt in range(retries + 1):
             if pause and (i or attempt):
                 _time.sleep(pause * (1 + 3 * attempt))
-            g = parse_schedule_page(fetch(url), d)
+            g = parse_schedule_page(fetch(url), d, include_non_d1=include_non_d1)
             if len(g):
                 break
-        print(f"  {d:%a %b %d}: {len(g)} D1 games listed", flush=True)
+        frames.append(g)
         if g.empty:
             empty.append(d)
-        frames.append(g)
+    games = pd.concat(frames, ignore_index=True)
+    games = games.drop_duplicates(subset=["DATE", "HOME", "AWAY"]).reset_index(drop=True)
+    return games, empty
+
+
+def fetch_week_schedule(week_start, fetch=None, pause=1.5, retries=2, include_non_d1=False):
+    """Every game Monday..Sunday from the daily schedule pages (D1 vs D1 only
+    unless ``include_non_d1``).
+
+    A Saturday with no D1 games raises IncompleteSchedule: in-season Saturdays
+    always have games, so an empty one means the pull failed."""
+    games, _ = fetch_days(week_start, 7, fetch=fetch, pause=pause, retries=retries,
+                          include_non_d1=include_non_d1)
+    d1 = games[games["D1"].astype(bool)]
+    empty = []
+    for i in range(7):
+        d = week_start + timedelta(days=i)
+        n = int((d1["DATE"] == d.isoformat()).sum())
+        print(f"  {d:%a %b %d}: {n} D1 games listed", flush=True)
+        if n == 0:
+            empty.append(d)
     if any(d.weekday() == 5 for d in empty):
         raise IncompleteSchedule(
             f"No games came back for Saturday {[d for d in empty if d.weekday() == 5][0]}"
@@ -235,8 +255,103 @@ def fetch_week_schedule(week_start, fetch=None, pause=1.5, retries=2):
     if empty:
         print(f"  [note] no games listed on: {', '.join(f'{d:%a %b %d}' for d in empty)}",
               flush=True)
-    sched = pd.concat(frames, ignore_index=True)
-    return sched.drop_duplicates(subset=["DATE", "HOME", "AWAY"]).reset_index(drop=True)
+    return games
+
+
+# ──────────────────────────────────────────────────────────────
+# TEAM STATS SNAPSHOT  (what the card shows next to each matchup)
+# ──────────────────────────────────────────────────────────────
+#
+# Frozen with the slate, so the card shows the numbers the model saw on build
+# day. Everything here is a model input or common fan knowledge — no
+# predictions (no lines, win %, or the model's own probability).
+
+STATS_SUBDIR = "stats"           # data/slates/stats/<slate_id>.csv
+STAT_COLUMNS = [
+    "slate_id", "game_id", "side", "team", "record", "conf_record", "trank",
+    "adjoe", "adjoe_rank", "adjde", "adjde_rank", "adjt", "adjt_rank",
+    "sos", "sos_rank", "wab", "wab_rank", "rest", "as_of",
+]
+
+
+def team_tables(season, text=None):
+    """(ratings, raw) for the season from {season}_team_results.csv: ``ratings``
+    is the tidy model-feature frame, ``raw`` keeps record / Con Rec. too."""
+    if text is None:
+        text = fd._download(season, "team_results")
+    raw = pd.read_csv(io.StringIO(text), index_col=False)
+    raw.columns = [str(c).strip() for c in raw.columns]
+    ratings = fd._tidy_ratings(raw.copy(), season)
+    raw = raw.rename(columns={"team": "TEAM"})
+    raw["TEAM"] = raw["TEAM"].astype(str).str.strip()
+    return ratings, raw
+
+
+def _rank(series, ascending):
+    """National rank (1 = best). All-equal columns (e.g. strength of schedule
+    and WAB before anyone has played) get no rank instead of a meaningless #1."""
+    if series.nunique(dropna=True) <= 1:
+        return pd.Series(pd.NA, index=series.index, dtype="Int64")
+    return series.rank(ascending=ascending, method="min").astype("Int64")
+
+
+def _num(v, nd):
+    return "" if pd.isna(v) else round(float(v), nd)
+
+
+def _int(v):
+    return "" if pd.isna(v) else int(v)
+
+
+def rest_label(team, game_date, schedule, opener_ok, window_ok):
+    """Days since the team's previous game before ``game_date``, from every
+    game listed (D1 or not, played or scheduled). 'Opener' when the team has
+    played no games yet and has none earlier in the week; '7+' when the
+    look-back window had no game for it."""
+    played = schedule[((schedule["HOME"] == team) | (schedule["AWAY"] == team))
+                      & (schedule["DATE"] < game_date)]
+    if len(played):
+        days = (date.fromisoformat(game_date) - date.fromisoformat(played["DATE"].max())).days
+        return f"{days} day{'s' if days != 1 else ''}"
+    if opener_ok:
+        return "Opener"
+    return "7+ days" if window_ok else ""
+
+
+def team_stats(raw, slate_rows, schedule, as_of, window_ok=True):
+    """One row per (slate game, side) with the card's numbers. Ranks are
+    national, over every team in ``raw`` (1 = best; for tempo 1 = fastest)."""
+    r = raw.copy()
+    for c in ("adjoe", "adjde", "adjt", "sos", "WAB", "barthag"):
+        r[c] = pd.to_numeric(r[c], errors="coerce")
+    r["trank"] = _rank(r["barthag"], ascending=False)
+    r["adjoe_rank"] = _rank(r["adjoe"], ascending=False)
+    r["adjde_rank"] = _rank(r["adjde"], ascending=True)      # fewer points allowed
+    r["adjt_rank"] = _rank(r["adjt"], ascending=False)
+    r["sos_rank"] = _rank(r["sos"], ascending=False)
+    r["wab_rank"] = _rank(r["WAB"], ascending=False)
+    r = r.set_index("TEAM")
+    out = []
+    for g in slate_rows.itertuples(index=False):
+        for side, team in (("away", g.away), ("home", g.home)):
+            if team not in r.index:
+                continue
+            t = r.loc[team]
+            rec = str(t.get("record", "")).strip()
+            out.append({
+                "slate_id": g.slate_id, "game_id": g.game_id, "side": side, "team": team,
+                "record": rec, "conf_record": str(t.get("Con Rec.", "")).strip(),
+                "trank": _int(t["trank"]),
+                "adjoe": _num(t["adjoe"], 1), "adjoe_rank": _int(t["adjoe_rank"]),
+                "adjde": _num(t["adjde"], 1), "adjde_rank": _int(t["adjde_rank"]),
+                "adjt": _num(t["adjt"], 1), "adjt_rank": _int(t["adjt_rank"]),
+                "sos": _num(t["sos"], 3), "sos_rank": _int(t["sos_rank"]),
+                "wab": _num(t["WAB"], 1), "wab_rank": _int(t["wab_rank"]),
+                "rest": rest_label(team, g.date, schedule,
+                                   opener_ok=rec in ("0-0", ""), window_ok=window_ok),
+                "as_of": as_of,
+            })
+    return pd.DataFrame(out, columns=STAT_COLUMNS)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -352,7 +467,8 @@ def build_slate(week_start, k=SLATE_SIZE, top_n=TOP_N_GATE,
     features = meta["features"]
 
     print(f"Season {season}: week {week_start} → {week_end}", flush=True)
-    sched = fetch_week_schedule(week_start)
+    sched_all = fetch_week_schedule(week_start, include_non_d1=True)
+    sched = sched_all[sched_all["D1"].astype(bool)]
     # Only games that haven't been played and aren't today or earlier — built
     # mid-week, the slate skips days whose games may already have tipped.
     today = today or date.today()
@@ -362,7 +478,7 @@ def build_slate(week_start, k=SLATE_SIZE, top_n=TOP_N_GATE,
     week_games = sched[in_week]
     print(f"  {len(week_games)} unplayed D1-vs-D1 games from {first_day}", flush=True)
 
-    ratings = fd.parse_team_results(season)          # live, i.e. point-in-time today
+    ratings, raw = team_tables(season)              # live, i.e. point-in-time today
     missing = [c for c in features if c not in ratings.columns]
     if missing:
         raise SystemExit(f"Ratings are missing model features: {missing}")
@@ -392,6 +508,22 @@ def build_slate(week_start, k=SLATE_SIZE, top_n=TOP_N_GATE,
     os.makedirs(SLATE_DIR, exist_ok=True)
     rows.to_csv(out_path, index=False)
     print(f"Wrote {out_path}")
+
+    # Card stats, frozen with the slate. Rest days need the week before too.
+    try:
+        prior, prior_empty = fetch_days(week_start - timedelta(days=7), 7,
+                                        retries=1, include_non_d1=True)
+        window_ok = len(prior_empty) < 7     # all 7 empty = the pull failed
+    except Exception as e:  # noqa: BLE001 — stats are a nice-to-have
+        print(f"  [warning] couldn't fetch last week's schedule ({e}); rest days unknown")
+        prior, window_ok = sched_all.iloc[0:0], False
+    stats = team_stats(raw, rows, pd.concat([prior, sched_all], ignore_index=True),
+                       as_of=today.isoformat(), window_ok=window_ok)
+    stats_dir = os.path.join(SLATE_DIR, STATS_SUBDIR)
+    os.makedirs(stats_dir, exist_ok=True)
+    stats_path = os.path.join(stats_dir, f"{season}_{week_start.isoformat()}.csv")
+    stats.to_csv(stats_path, index=False)
+    print(f"Wrote {stats_path} ({len(stats)} team rows)")
     print(rows[["date", "tip_et", "away", "home", "neutral",
                 "entropy_bits"]].to_string(index=False))
     print("(Model picks are in the file; don't look before you lock yours.)")

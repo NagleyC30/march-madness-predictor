@@ -3,7 +3,9 @@
 # Shows the week's 5 model-chosen toss-ups, lets you lock a pick for each game
 # before tip-off, reveals the model's pick only after you've locked (or the game
 # has), lets you record the winner once it's played, and keeps the season
-# scoreboard. Logic lives in slate_contest.py; picks are stored by contest.py.
+# scoreboard. Each card also shows the two teams' stats as frozen with the slate
+# (the same numbers the model used), and you can save a draft pick without
+# locking it. Logic lives in slate_contest.py; picks are stored by contest.py.
 
 from datetime import date
 
@@ -41,7 +43,45 @@ def _matchup(g):
     return f"**{g.away}** @ **{g.home}**"
 
 
-def _game_card(g):
+def _fmt_rank(value, rank, fmt="{:.1f}"):
+    """'118.2 (#20)'; a stat with no rank yet (nobody has played) shows a dash."""
+    if rank in ("", None) or value in ("", None):
+        return "— (no games yet)"
+    return f"{fmt.format(float(value))} (#{int(rank)})"
+
+
+def _stats_block(g, stats):
+    """Away/home stat table for one game, from the frozen snapshot."""
+    a = stats.get((g.game_id, "away"))
+    h = stats.get((g.game_id, "home"))
+    if a is None or h is None:
+        return
+    def rec(t):
+        return f"{t['record']} ({t['conf_record']} conf)" if t["conf_record"] else t["record"]
+    def rest(t):
+        return t["rest"] or "—"
+    basic = (
+        f"| | {g.away} | {g.home} |\n|---|---|---|\n"
+        f"| Record | {rec(a)} | {rec(h)} |\n"
+        f"| T-Rank | #{a['trank'] or '—'} | #{h['trank'] or '—'} |\n"
+        f"| Adj. offense | {_fmt_rank(a['adjoe'], a['adjoe_rank'])} | {_fmt_rank(h['adjoe'], h['adjoe_rank'])} |\n"
+        f"| Adj. defense | {_fmt_rank(a['adjde'], a['adjde_rank'])} | {_fmt_rank(h['adjde'], h['adjde_rank'])} |\n"
+        f"| Rest before game | {rest(a)} | {rest(h)} |"
+    )
+    st.markdown(basic)
+    with st.expander("Scouting stats"):
+        st.markdown(
+            f"| | {g.away} | {g.home} |\n|---|---|---|\n"
+            f"| Tempo (poss/40 min) | {_fmt_rank(a['adjt'], a['adjt_rank'])} | {_fmt_rank(h['adjt'], h['adjt_rank'])} |\n"
+            f"| Strength of schedule | {_fmt_rank(a['sos'], a['sos_rank'], '{:.3f}')} | {_fmt_rank(h['sos'], h['sos_rank'], '{:.3f}')} |\n"
+            f"| Wins above bubble | {_fmt_rank(a['wab'], a['wab_rank'], '{:+.1f}')} | {_fmt_rank(h['wab'], h['wab_rank'], '{:+.1f}')} |"
+        )
+        st.caption("Adjusted offense and defense are points per 100 possessions against "
+                   "an average D1 team (lower defense is better). Tempo: #1 = fastest. "
+                   "Early in the season these are mostly Barttorvik's preseason projections.")
+
+
+def _game_card(g, stats):
     with st.container(border=True):
         top, badge = st.columns([4, 2])
         lock_note = ("picks close at tip-off" if g.tip_et
@@ -50,17 +90,32 @@ def _game_card(g):
                      f"model uncertainty {g.entropy_bits:.3f} bits</small>",
                      unsafe_allow_html=True)
         badge.markdown(f"**{STATE_BADGE[g.state]}**")
+        _stats_block(g, stats)
 
         if g.state == "open":
-            choice = st.radio("Your pick", [g.away, g.home], horizontal=True,
-                              key=f"pick_{g.game_id}", index=None)
-            if st.button("🔒 Lock my pick", key=f"lock_{g.game_id}",
+            teams = [g.away, g.home]
+            draft = g.draft_pick if g.draft_pick in teams else None
+            choice = st.radio("Your pick", teams, horizontal=True,
+                              key=f"pick_{g.game_id}",
+                              index=teams.index(draft) if draft else None)
+            c1, c2, _ = st.columns([1, 1, 2])
+            if c1.button("💾 Save draft", key=f"draft_{g.game_id}",
+                         disabled=choice is None or choice == draft):
+                try:
+                    sc.save_draft(g._asdict(), choice)
+                    st.rerun()
+                except ValueError as e:
+                    st.error(str(e))
+            if c2.button("🔒 Lock my pick", key=f"lock_{g.game_id}",
                          disabled=choice is None, type="primary"):
                 try:
                     sc.lock_pick(g._asdict(), choice)
                     st.rerun()
                 except ValueError as e:          # incl. contest.AlreadyPicked
                     st.error(str(e))
+            if draft:
+                st.caption(f"💾 Draft saved: **{draft}**. It's not locked and won't count "
+                           "unless you lock it before tip-off.")
             st.caption("🤖 The model's pick stays hidden until you lock yours.")
             return
 
@@ -73,6 +128,9 @@ def _game_card(g):
             st.markdown(f"{you} &nbsp;·&nbsp; {model_line}")
         else:
             st.markdown(model_line)
+            if g.state == "missed" and g.draft_pick:
+                st.caption(f"You saved a draft ({g.draft_pick}) but didn't lock it, "
+                           "so this game doesn't count.")
 
         if g.state == "picked" and g.locked:
             c1, c2 = st.columns([3, 1])
@@ -129,7 +187,7 @@ def render():
                 "commit and push `data/slates/` (see the setup guide).")
         return
 
-    board = sc.game_board(slates, sc.slate_picks())
+    board = sc.game_board(slates, sc.slate_picks(), drafts_df=sc.drafts())
     weeks = (board.drop_duplicates("slate_id")[["slate_id", "week_start"]]
              .sort_values("week_start", ascending=False))
     current = sc.current_slate_id(slates)
@@ -140,13 +198,30 @@ def render():
                        + ("  (this week)" if s == current else ""))
 
     week = board[board.slate_id == sel].sort_values(["lock_at", "game_id"])
+    snap = sc.load_stats(sel)
+    stats = {(r["game_id"], r["side"]): r for r in snap.to_dict("records")}
     n_open = int((week.state == "open").sum())
     if n_open:
         nxt = week[week.state == "open"].iloc[0]
         st.markdown(f"**{n_open} game{'s' if n_open != 1 else ''} still open.** "
                     f"Next lock: {_when(nxt)}.")
+        drafted = week[(week.state == "open") & week.draft_pick.notna()]
+        if len(drafted):
+            if st.button(f"🔒 Lock all saved drafts ({len(drafted)})", key="lock_drafts"):
+                n, errors = sc.lock_saved_drafts(week)
+                for e in errors:
+                    st.error(e)
+                if n and not errors:
+                    st.rerun()
+            st.caption("Locks each open game exactly as drafted. The model's picks for "
+                       "those games are revealed right after.")
+    if not snap.empty:
+        as_of = date.fromisoformat(str(snap["as_of"].iloc[0]))
+        st.caption(f"Team stats are frozen as of {as_of:%a %b} {as_of.day}, the numbers "
+                   "the model used for its picks. Anything newer (injuries, last night's "
+                   "game) is yours to bring.")
     for g in week.itertuples(index=False):
-        _game_card(g)
+        _game_card(g, stats)
 
     st.divider()
     _scoreboard(board)
