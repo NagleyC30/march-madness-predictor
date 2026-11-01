@@ -688,6 +688,18 @@ elif page == "Me vs Machine":
         meta = artifact["meta"]
         features = meta["features"]
 
+        # ── Storage check: never take a pick we can't save ──────────
+        storage_ok, storage_hint = ct.check_storage()
+        if not storage_ok:
+            st.error("**Can't reach the picks database, so the contest is paused.**  \n"
+                     + storage_hint)
+            st.caption("Picks already saved in Supabase are untouched. "
+                       "The exact error is in **Manage app → Logs**, on the line "
+                       "starting `[contest] Supabase connection failed`.")
+            if st.button("🔄 Try again"):
+                st.rerun()
+            st.stop()
+
         # ── Make your pick (blind) ──────────────────────────────────
         st.subheader("Make your pick")
         seasons = sorted(ratings["YEAR"].unique(), reverse=True)

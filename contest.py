@@ -134,17 +134,93 @@ _SCHEMA = [
 ]
 
 
+class StorageUnavailable(RuntimeError):
+    """The Supabase database is configured but can't be reached. ``hint`` is a
+    plain-English next step that never contains the password or the URL."""
+
+    def __init__(self, hint, detail=""):
+        super().__init__(hint)
+        self.hint = hint
+        self.detail = detail
+
+
+# Known psycopg2 / Supabase connection failures → what to do about them.
+_HINTS = [
+    (("could not translate host name",),
+     "The database host name can't be found. If it starts with `db.` you're using "
+     "Supabase's *direct* connection, which Streamlit Cloud can't reach. Use the "
+     "**Session pooler** string instead (host `aws-0-<region>.pooler.supabase.com`). "
+     "If your password contains `@`, `#`, `/`, `:` or `?`, URL-encode it, or reset it "
+     "to letters and numbers only."),
+    (("network is unreachable", "cannot assign requested address"),
+     "The host only has an IPv6 address, which Streamlit Cloud can't reach. "
+     "Switch to Supabase's **Session pooler** connection string."),
+    (("tenant or user not found",),
+     "The pooler doesn't recognise the user. With the Session pooler the username "
+     "must be `postgres.<project-ref>`, not just `postgres`, and the host's region "
+     "must match your project."),
+    (("password authentication failed",),
+     "Supabase rejected the password. Reset it under **Project Settings → Database**, "
+     "then update the `db_url` secret."),
+    (("timeout", "timed out", "connection refused", "server closed the connection",
+      "could not receive data"),
+     "The database isn't answering. Supabase **pauses free projects after a week "
+     "without use**: open your project at supabase.com and click **Restore project**, "
+     "wait a minute or two, then reload this page."),
+    (("invalid dsn", "invalid integer value", "invalid port"),
+     "The `db_url` secret isn't a valid connection string. Copy it again from Supabase "
+     "(Session pooler) and URL-encode any special characters in the password."),
+]
+_GENERIC_HINT = ("Couldn't connect to the Supabase database. Check the `[supabase] db_url` "
+                 "secret and that the Supabase project is running (not paused).")
+
+
+def _diagnose(err):
+    """Map a connection error to a safe, actionable hint (no secrets in it)."""
+    orig = getattr(err, "orig", err)
+    msg = str(orig).strip().lower()
+    for needles, hint in _HINTS:
+        if any(n in msg for n in needles):
+            return hint
+    return _GENERIC_HINT
+
+
 def _get_engine():
-    """Create (once per URL) the engine and make sure the table + guard exist."""
+    """Create (once per URL) the engine and make sure the table + guard exist.
+
+    Raises StorageUnavailable (with a plain-English hint) when the database is
+    configured but unreachable. A failed engine is never cached, so the next
+    page load retries — e.g. after you restore a paused Supabase project."""
     global _engine, _engine_url
     url = _db_url()
     if _engine is None or _engine_url != url:
-        _engine = sa.create_engine(url, pool_pre_ping=True, pool_recycle=300)
-        with _engine.begin() as con:
-            for stmt in _SCHEMA:
-                con.execute(sa.text(stmt))
-        _engine_url = url
+        try:
+            eng = sa.create_engine(url, pool_pre_ping=True, pool_recycle=300,
+                                   connect_args={"connect_timeout": 10})
+            with eng.begin() as con:
+                for stmt in _SCHEMA:
+                    con.execute(sa.text(stmt))
+        except (sa.exc.OperationalError, sa.exc.ArgumentError,
+                sa.exc.InterfaceError, ValueError) as e:
+            detail = str(getattr(e, "orig", e)).strip().splitlines()
+            print(f"[contest] Supabase connection failed: "
+                  f"{type(e).__name__}: {detail[0] if detail else ''}", flush=True)
+            raise StorageUnavailable(_diagnose(e), detail[0] if detail else "") from e
+        _engine, _engine_url = eng, url
     return _engine
+
+
+def check_storage():
+    """(ok, hint). Opens the database connection if one is configured; CSV mode
+    is always ok. Call this before showing a pick form, so you never lock a pick
+    that can't be saved."""
+    if not _use_db():
+        return True, None
+    try:
+        _get_engine()
+        return True, None
+    except StorageUnavailable as e:
+        return False, e.hint
 
 
 def _use_db():
