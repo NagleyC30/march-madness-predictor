@@ -1,6 +1,6 @@
 slate_id,season,week_start,week_end,game_id,date,home,away,neutral,game_type,model_p_home,model_pick,model_prob_pick,entropy_bits,home_barthag_rank,away_barthag_rank,tip_et,generated_utc,model_training_data,ratings_as_of
-2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-06|Connecticut@Michigan,2026-11-06,Michigan,Connecticut,True,,0.5007,Michigan,0.5007,1.0,14,13,07:00 PM,2026-11-01T15:47:38+00:00,point-in-time,2026-11-01
-2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-02|Gonzaga@Purdue,2026-11-02,Purdue,Gonzaga,True,,0.4808,Gonzaga,0.5192,0.9989,29,8,06:30 PM,2026-11-01T15:47:38+00:00,point-in-time,2026-11-01
-2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-02|BYU@Ohio St.,2026-11-02,Ohio St.,BYU,True,,0.528,Ohio St.,0.528,0.9977,20,24,08:00 PM,2026-11-01T15:47:38+00:00,point-in-time,2026-11-01
-2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-02|Florida@Miami FL,2026-11-02,Miami FL,Florida,True,,0.4344,Florida,0.5656,0.9875,12,3,05:00 PM,2026-11-01T15:47:38+00:00,point-in-time,2026-11-01
-2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-02|Arizona@UCLA,2026-11-02,UCLA,Arizona,True,,0.4125,Arizona,0.5875,0.9778,25,2,09:00 PM,2026-11-01T15:47:38+00:00,point-in-time,2026-11-01
+2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-06|Connecticut@Michigan,2026-11-06,Michigan,Connecticut,True,,0.5007,Michigan,0.5007,1.0,14,13,07:00 PM,2026-11-01T16:47:14+00:00,point-in-time,2026-11-01
+2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-02|Gonzaga@Purdue,2026-11-02,Purdue,Gonzaga,True,,0.4808,Gonzaga,0.5192,0.9989,29,8,06:30 PM,2026-11-01T16:47:14+00:00,point-in-time,2026-11-01
+2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-07|Maryland@Georgetown,2026-11-07,Georgetown,Maryland,False,,0.5268,Georgetown,0.5268,0.9979,61,39,06:30 PM,2026-11-01T16:47:14+00:00,point-in-time,2026-11-01
+2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-02|BYU@Ohio St.,2026-11-02,Ohio St.,BYU,True,,0.528,Ohio St.,0.528,0.9977,20,24,08:00 PM,2026-11-01T16:47:14+00:00,point-in-time,2026-11-01
+2027_2026-11-02,2027,2026-11-02,2026-11-08,2026-11-08|Arkansas@Virginia,2026-11-08,Virginia,Arkansas,True,,0.5478,Virginia,0.5478,0.9934,5,22,12:00 PM,2026-11-01T16:47:14+00:00,point-in-time,2026-11-01

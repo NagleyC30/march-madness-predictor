@@ -34,6 +34,7 @@ import io
 import math
 import os
 import re
+import time as _time
 from datetime import date, datetime, timedelta, timezone
 from urllib.request import Request, urlopen
 
@@ -199,15 +200,41 @@ def _get(url):
         return resp.read().decode("utf-8", errors="replace")
 
 
-def fetch_week_schedule(week_start, fetch=None):
-    """Every D1-vs-D1 game Monday..Sunday from the daily schedule pages."""
+class IncompleteSchedule(RuntimeError):
+    """A schedule page came back empty where games are certain (a Saturday).
+    Barttorvik sometimes serves empty pages to rapid-fire requests; on
+    2026-11-01 a fast pull missed every weekend game this way."""
+
+
+def fetch_week_schedule(week_start, fetch=None, pause=1.5, retries=2):
+    """Every D1-vs-D1 game Monday..Sunday from the daily schedule pages.
+
+    Requests are spaced ``pause`` seconds apart, and a day with no games is
+    re-fetched ``retries`` more times (with a longer wait) before it's accepted
+    as genuinely empty. A Saturday that stays empty raises IncompleteSchedule:
+    in-season Saturdays always have games, so it means the pull failed."""
     fetch = fetch or _get
-    frames = []
+    frames, empty = [], []
     for i in range(7):
         d = week_start + timedelta(days=i)
-        g = parse_schedule_page(fetch(SCHEDULE_URL.format(ymd=d.strftime("%Y%m%d"))), d)
+        url = SCHEDULE_URL.format(ymd=d.strftime("%Y%m%d"))
+        for attempt in range(retries + 1):
+            if pause and (i or attempt):
+                _time.sleep(pause * (1 + 3 * attempt))
+            g = parse_schedule_page(fetch(url), d)
+            if len(g):
+                break
         print(f"  {d:%a %b %d}: {len(g)} D1 games listed", flush=True)
+        if g.empty:
+            empty.append(d)
         frames.append(g)
+    if any(d.weekday() == 5 for d in empty):
+        raise IncompleteSchedule(
+            f"No games came back for Saturday {[d for d in empty if d.weekday() == 5][0]}"
+            " — the schedule pull looks incomplete. Wait a few minutes and run again.")
+    if empty:
+        print(f"  [note] no games listed on: {', '.join(f'{d:%a %b %d}' for d in empty)}",
+              flush=True)
     sched = pd.concat(frames, ignore_index=True)
     return sched.drop_duplicates(subset=["DATE", "HOME", "AWAY"]).reset_index(drop=True)
 
@@ -307,12 +334,12 @@ def to_slate_rows(slate, season, week_start, meta, ratings_as_of):
 # ──────────────────────────────────────────────────────────────
 
 def build_slate(week_start, k=SLATE_SIZE, top_n=TOP_N_GATE,
-                both_top=BOTH_TOP_GATE, overwrite=False, today=None):
+                both_top=BOTH_TOP_GATE, overwrite=False, today=None, dry_run=False):
     """Fetch the schedule + today's ratings, score the week, write the slate."""
     week_start, week_end = week_bounds(week_start)
     season = season_for(week_start)
     out_path = os.path.join(SLATE_DIR, f"{season}_{week_start.isoformat()}.csv")
-    if os.path.exists(out_path) and not overwrite:
+    if os.path.exists(out_path) and not overwrite and not dry_run:
         # A frozen slate is never regenerated: that would let the model re-pick
         # with newer ratings. Pass --overwrite only to fix a broken slate.
         print(f"Slate already exists, leaving it frozen: {out_path}")
@@ -358,6 +385,10 @@ def build_slate(week_start, k=SLATE_SIZE, top_n=TOP_N_GATE,
 
     rows = to_slate_rows(slate, season, week_start, meta,
                          ratings_as_of=today.isoformat())
+    if dry_run:
+        print("Dry run: these would be the slate games (nothing written):")
+        print(rows[["date", "tip_et", "away", "home", "neutral"]].to_string(index=False))
+        return rows
     os.makedirs(SLATE_DIR, exist_ok=True)
     rows.to_csv(out_path, index=False)
     print(f"Wrote {out_path}")
@@ -376,13 +407,19 @@ def main(argv=None):
                     help="at least one team ranked <= this by BARTHAG")
     ap.add_argument("--both-top", type=int, default=BOTH_TOP_GATE,
                     help="both teams ranked <= this (0 disables)")
-    ap.add_argument("--overwrite", action="store_true")
+    ap.add_argument("--overwrite", action="store_true",
+                    help="rebuild an existing slate (only before any of its games lock)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="fetch and score, print the matchups, write nothing")
     a = ap.parse_args(argv)
     wk = (datetime.strptime(a.week, "%Y-%m-%d").date() if a.week
           else next_week_start())
-    build_slate(wk, k=a.k, top_n=a.top, both_top=a.both_top or None,
-                overwrite=a.overwrite)
+    rows = build_slate(wk, k=a.k, top_n=a.top, both_top=a.both_top or None,
+                       overwrite=a.overwrite, dry_run=a.dry_run)
+    # A non-zero exit makes a scheduled run (GitHub Actions / Task Scheduler)
+    # show up as failed, so an empty week never passes silently.
+    return 0 if len(rows) else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
