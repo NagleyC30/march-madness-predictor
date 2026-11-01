@@ -17,6 +17,7 @@ import model_explain as me
 import contest as ct
 import slate as sl
 import branding as brand
+import slate_page
 
 st.set_page_config(
     page_title=f"{brand.APP_NAME} — {brand.APP_TAGLINE}",
@@ -222,7 +223,7 @@ page = st.sidebar.radio(
     "Navigate",
     ["Overview",
      # ── Betting (the flagship) ──
-     "Betting Lab", "Me vs Machine",
+     "Betting Lab", "This Week's Slate", "Me vs Machine",
      # ── Prediction tools ──
      "Bracket Predictions", "Head-to-Head", "Game Predictor",
      # ── How good is the model? ──
@@ -232,7 +233,7 @@ page = st.sidebar.radio(
      "Custom Metric", "Data Explorer"],
     captions=[
         "Start here",
-        "Can it beat the market?", "You vs. the model",
+        "Can it beat the market?", "5 toss-ups, you vs. the model", "Any game you choose",
         "The predicted bracket", "Any two tourney teams", "Any game, any season",
         "Walk-forward accuracy", "Game-model calibration", "Classifier shoot-out",
         "Plain-English guide",
@@ -648,6 +649,14 @@ elif page == "Game Predictor":
                     "Flip the home/away toggle to see how much home court moves "
                     "the line — it's worth roughly 3–4 points on a neutral game."
                 )
+
+
+# ──────────────────────────────────────────────────────────────
+# PAGE: THIS WEEK'S SLATE  (automated weekly Me vs Machine — slate_page.py)
+# ──────────────────────────────────────────────────────────────
+
+elif page == "This Week's Slate":
+    slate_page.render()
 
 
 # ──────────────────────────────────────────────────────────────

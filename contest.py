@@ -43,7 +43,8 @@ STAKE = 100.0
 
 COLUMNS = ["id", "created_utc", "season", "team_a", "team_b", "location",
            "user_pick", "user_conf", "model_pick", "model_prob_pick",
-           "ml_a", "ml_b", "status", "actual_winner", "settled_utc"]
+           "ml_a", "ml_b", "status", "actual_winner", "settled_utc",
+           "slate_game_id"]
 
 
 def _now():
@@ -97,6 +98,12 @@ _SCHEMA = [
         actual_winner    TEXT NOT NULL DEFAULT '',
         settled_utc      TIMESTAMPTZ
     )""",
+    # Weekly-slate games carry the slate's game id (weekly_slate.py); the unique
+    # index means each slate game can be picked exactly once. Manual entries
+    # leave it NULL. Added with IF NOT EXISTS so existing databases upgrade.
+    "ALTER TABLE contest_picks ADD COLUMN IF NOT EXISTS slate_game_id TEXT",
+    """CREATE UNIQUE INDEX IF NOT EXISTS contest_picks_slate_game
+       ON contest_picks (slate_game_id) WHERE slate_game_id IS NOT NULL""",
     # Commit-then-reveal, enforced by the database: the picks, teams and lock time
     # can never change; only a pending row can be settled; settled rows are final.
     """CREATE OR REPLACE FUNCTION contest_picks_guard() RETURNS trigger AS $$
@@ -120,7 +127,8 @@ _SCHEMA = [
            OR NEW.model_pick IS DISTINCT FROM OLD.model_pick
            OR NEW.model_prob_pick IS DISTINCT FROM OLD.model_prob_pick
            OR NEW.ml_a IS DISTINCT FROM OLD.ml_a
-           OR NEW.ml_b IS DISTINCT FROM OLD.ml_b THEN
+           OR NEW.ml_b IS DISTINCT FROM OLD.ml_b
+           OR NEW.slate_game_id IS DISTINCT FROM OLD.slate_game_id THEN
             RAISE EXCEPTION 'locked pick fields cannot be changed';
         END IF;
         IF NEW.status = 'settled' THEN
@@ -236,7 +244,8 @@ def _normalize(df):
     # string assignment (e.g. settling writes a timestamp). Force every text
     # column to object/"" so equality checks and later writes both work.
     str_cols = ["created_utc", "team_a", "team_b", "location", "user_pick",
-                "model_pick", "status", "actual_winner", "settled_utc"]
+                "model_pick", "status", "actual_winner", "settled_utc",
+                "slate_game_id"]
     for c in str_cols:
         df[c] = df[c].fillna("").astype(str).replace({"nan": "", "NaT": ""})
     return df[COLUMNS]
@@ -263,25 +272,38 @@ def save_picks(df):
     df.to_csv(PICKS_FILE, index=False)
 
 
+class AlreadyPicked(ValueError):
+    """A pick for this weekly-slate game is already locked."""
+
+
 def add_pick(season, team_a, team_b, location, user_pick,
-             model_pick, model_prob_pick, user_conf=None, ml_a=None, ml_b=None):
+             model_pick, model_prob_pick, user_conf=None, ml_a=None, ml_b=None,
+             slate_game_id=None):
     """Record one game: my pick and the model's pick, captured together and
-    timestamped. Returns the new row id."""
+    timestamped. Returns the new row id. ``slate_game_id`` ties the pick to a
+    weekly-slate game; a second pick for the same game raises AlreadyPicked."""
     if _use_db():
-        with _get_engine().begin() as con:
-            return int(con.execute(sa.text(
-                """INSERT INTO contest_picks
-                   (season, team_a, team_b, location, user_pick, user_conf,
-                    model_pick, model_prob_pick, ml_a, ml_b)
-                   VALUES (:season, :team_a, :team_b, :location, :user_pick,
-                           :user_conf, :model_pick, :prob, :ml_a, :ml_b)
-                   RETURNING id"""),
-                {"season": int(season), "team_a": team_a, "team_b": team_b,
-                 "location": location, "user_pick": user_pick,
-                 "user_conf": user_conf, "model_pick": model_pick,
-                 "prob": round(float(model_prob_pick), 4),
-                 "ml_a": ml_a, "ml_b": ml_b}).scalar_one())
+        try:
+            with _get_engine().begin() as con:
+                return int(con.execute(sa.text(
+                    """INSERT INTO contest_picks
+                       (season, team_a, team_b, location, user_pick, user_conf,
+                        model_pick, model_prob_pick, ml_a, ml_b, slate_game_id)
+                       VALUES (:season, :team_a, :team_b, :location, :user_pick,
+                               :user_conf, :model_pick, :prob, :ml_a, :ml_b, :sg)
+                       RETURNING id"""),
+                    {"season": int(season), "team_a": team_a, "team_b": team_b,
+                     "location": location, "user_pick": user_pick,
+                     "user_conf": user_conf, "model_pick": model_pick,
+                     "prob": round(float(model_prob_pick), 4),
+                     "ml_a": ml_a, "ml_b": ml_b, "sg": slate_game_id}).scalar_one())
+        except sa.exc.IntegrityError as e:
+            if slate_game_id and "contest_picks_slate_game" in str(e):
+                raise AlreadyPicked("You already locked a pick for this game.") from e
+            raise
     df = load_picks()
+    if slate_game_id and (df["slate_game_id"] == slate_game_id).any():
+        raise AlreadyPicked("You already locked a pick for this game.")
     new_id = 1 if df.empty else int(pd.to_numeric(df["id"]).max()) + 1
     row = {
         "id": new_id, "created_utc": _now(), "season": season,
@@ -290,6 +312,7 @@ def add_pick(season, team_a, team_b, location, user_pick,
         "model_pick": model_pick, "model_prob_pick": round(float(model_prob_pick), 4),
         "ml_a": ml_a, "ml_b": ml_b, "status": "pending",
         "actual_winner": "", "settled_utc": "",
+        "slate_game_id": slate_game_id or "",
     }
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     save_picks(df)

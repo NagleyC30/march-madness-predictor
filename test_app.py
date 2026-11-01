@@ -2,7 +2,7 @@
 # exception is raised. Not committed as a unit test suite — just a boot check.
 from streamlit.testing.v1 import AppTest
 
-PAGES = ["Overview", "Betting Lab", "Me vs Machine", "Bracket Predictions",
+PAGES = ["Overview", "Betting Lab", "This Week's Slate", "Me vs Machine", "Bracket Predictions",
          "Head-to-Head", "Game Predictor", "Model Accuracy",
          "Backtest & Calibration", "Model Bake-off", "How the Models Work",
          "Custom Metric", "Data Explorer"]
