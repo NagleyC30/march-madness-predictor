@@ -191,9 +191,10 @@ def parse_schedule_page(page, game_date, include_non_d1=False):
             "TV": htmllib.unescape(tv.group(1)).strip() if tv else "",
             "VENUE": htmllib.unescape(venue.group(1)).strip() if venue else "",
             "D1": d1,
+            "RESULT": result,       # raw result-cell text; see slate_results.py
         })
     cols = ["YEAR", "DATE", "AWAY", "HOME", "NEUTRAL", "GAME_TYPE", "PLAYED",
-            "TIP_ET", "TV", "VENUE", "D1"]
+            "TIP_ET", "TV", "VENUE", "D1", "RESULT"]
     return pd.DataFrame(out, columns=cols)
 
 

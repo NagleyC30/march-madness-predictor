@@ -1,0 +1,63 @@
+# Pulls final scores for the weekly slate's games and commits them to main.
+# The "This Week's Slate" page reads data/slates/results/ and settles your
+# locked picks automatically, so no one has to type winners in.
+#
+# Runs hourly through the evening and overnight (ET), plus one midday run.
+#
+# Scheduled runs only fire from the default branch.
+# Install: move this file to .github/workflows/slate-results.yml.
+name: Slate results
+
+on:
+  schedule:
+    # Games end between ~7 p.m. ET and ~1 a.m. ET (00:00-06:00 UTC), and
+    # Barttorvik posts scores within a few hours. Hourly from 22:00 UTC to
+    # 07:00 UTC catches evening games; a midday run catches the next morning.
+    - cron: "15 22,23,0,1,2,3,4,5,6,7 * * *"
+    - cron: "15 16 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: print the raw result text Barttorvik shows, commit nothing."
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: slate-repo-writes
+  cancel-in-progress: false
+
+jobs:
+  results:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-jobs.txt
+      - run: pip install -r requirements-jobs.txt
+      - name: Fetch results
+        env:
+          DRY: ${{ github.event.inputs.dry_run }}
+        run: |
+          args=""
+          if [ "$DRY" = "true" ]; then args="--dry-run"; fi
+          python slate_results.py $args
+      - name: Commit results
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/slates/results
+          if git diff --cached --quiet; then
+            echo "No new results."
+          else
+            git commit -m "Slate results: $(date -u +%F)"
+            git pull --rebase
+            git push
+          fi

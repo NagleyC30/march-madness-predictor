@@ -13,6 +13,7 @@ import streamlit as st
 
 import contest as ct
 import slate_contest as sc
+import slate_results as sr
 
 STATE_BADGE = {
     "open": "🟢 Open",
@@ -133,6 +134,8 @@ def _game_card(g, stats):
                            "so this game doesn't count.")
 
         if g.state == "picked" and g.locked:
+            st.caption("⏳ Waiting for the final score to post. It's recorded automatically; "
+                       "you can also enter it yourself.")
             c1, c2 = st.columns([3, 1])
             winner = c1.selectbox("Who won?", [g.away, g.home], index=None,
                                   key=f"win_{g.game_id}", placeholder="Who won?",
@@ -188,6 +191,9 @@ def render():
         return
 
     board = sc.game_board(slates, sc.slate_picks(), drafts_df=sc.drafts())
+    # Results the scheduled job found settle your locked picks automatically.
+    if sc.auto_settle(board, sr.load_results()):
+        board = sc.game_board(slates, sc.slate_picks(), drafts_df=sc.drafts())
     weeks = (board.drop_duplicates("slate_id")[["slate_id", "week_start"]]
              .sort_values("week_start", ascending=False))
     current = sc.current_slate_id(slates)

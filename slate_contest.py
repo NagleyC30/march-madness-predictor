@@ -164,6 +164,22 @@ def record_winner(pick_id, winner):
     return ct.settle_pick(int(pick_id), winner)
 
 
+def auto_settle(board, results):
+    """Settle every locked, still-pending pick whose winner has been posted in
+    the results files (slate_results.py). Returns the number settled. Safe to
+    call on every page load: the database only settles a pending pick once, and
+    a winner who isn't in the game is ignored."""
+    if board.empty or results is None or results.empty:
+        return 0
+    won = dict(zip(results["game_id"], results["winner"]))
+    n = 0
+    for g in board[(board["state"] == "picked") & board["locked"]].to_dict("records"):
+        w = won.get(g["game_id"])
+        if w in (g["home"], g["away"]) and record_winner(g["pick_id"], w):
+            n += 1
+    return n
+
+
 # ──────────────────────────────────────────────────────────────
 # GAME STATE + SCOREBOARD
 # ──────────────────────────────────────────────────────────────
